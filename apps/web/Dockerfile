@@ -1,9 +1,12 @@
 FROM node:20-alpine AS builder
 WORKDIR /app
+
+RUN corepack enable && corepack prepare pnpm@9.15.0 --activate
+
 COPY . .
-RUN npm install --legacy-peer-deps
+RUN pnpm install --frozen-lockfile=false
 ENV NEXT_TELEMETRY_DISABLED=1
-RUN npm run build --workspace=apps/web
+RUN pnpm --filter @agency/web build
 
 FROM node:20-alpine AS runner
 WORKDIR /app
