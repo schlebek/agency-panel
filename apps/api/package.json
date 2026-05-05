@@ -3,12 +3,13 @@
   "version": "0.1.0",
   "private": true,
   "scripts": {
-    "dev": "bun run --watch src/index.ts",
-    "build": "bun build src/index.ts --outdir dist --target bun",
-    "start": "bun run dist/index.js"
+    "dev": "tsx watch src/index.ts",
+    "build": "tsc --noEmit false --outDir dist",
+    "start": "node dist/index.js"
   },
   "dependencies": {
     "@agency/db": "workspace:*",
+    "@hono/node-server": "^1.13.7",
     "hono": "^4.6.14",
     "@hono/zod-validator": "^0.4.1",
     "zod": "^3.24.1",
@@ -28,6 +29,7 @@
     "@types/bcryptjs": "^2.4.6",
     "@types/jsonwebtoken": "^9.0.7",
     "@types/node": "^22.10.2",
+    "tsx": "^4.19.2",
     "typescript": "^5.7.2"
   }
 }

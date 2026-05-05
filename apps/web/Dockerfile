@@ -1,11 +1,11 @@
-FROM oven/bun:1 AS builder
+FROM node:20-alpine AS builder
 WORKDIR /app
 COPY . .
-RUN bun install
+RUN npm install --legacy-peer-deps
 ENV NEXT_TELEMETRY_DISABLED=1
-RUN bun run --cwd apps/web build
+RUN npm run build --workspace=apps/web
 
-FROM oven/bun:1 AS runner
+FROM node:20-alpine AS runner
 WORKDIR /app
 ENV NODE_ENV=production
 ENV NEXT_TELEMETRY_DISABLED=1
@@ -19,4 +19,4 @@ COPY --from=builder /app/apps/web/.next/static ./apps/web/.next/static
 USER nextjs
 EXPOSE 3000
 ENV PORT=3000
-CMD ["bun", "apps/web/server.js"]
+CMD ["node", "apps/web/server.js"]
