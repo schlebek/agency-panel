@@ -10,6 +10,7 @@ RUN bun install
 
 FROM deps AS builder
 COPY . .
+RUN bun install
 RUN bun run --cwd apps/api build
 
 FROM base AS runner

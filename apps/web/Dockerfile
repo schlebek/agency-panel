@@ -10,6 +10,7 @@ RUN bun install
 
 FROM deps AS builder
 COPY . .
+RUN bun install
 ENV NEXT_TELEMETRY_DISABLED=1
 RUN bun run --cwd apps/web build
 
