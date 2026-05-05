@@ -11,4 +11,4 @@ COPY . .
 RUN pnpm install --frozen-lockfile=false
 
 EXPOSE 3001
-CMD ["node", "--import", "tsx/esm", "apps/api/src/index.ts"]
+CMD ["/app/node_modules/.bin/tsx", "apps/api/src/index.ts"]
