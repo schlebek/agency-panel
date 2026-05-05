@@ -1,0 +1,24 @@
+import { pgTable, uuid, text, timestamp, integer, boolean, pgEnum } from "drizzle-orm/pg-core";
+import { clients } from "./clients";
+import { tenants } from "./tenants";
+
+export const reportStatusEnum = pgEnum("report_status", ["draft", "generating", "ready", "sent", "failed"]);
+
+export const reports = pgTable("reports", {
+  id: uuid("id").primaryKey().defaultRandom(),
+  tenantId: uuid("tenant_id").references(() => tenants.id, { onDelete: "cascade" }).notNull(),
+  clientId: uuid("client_id").references(() => clients.id, { onDelete: "cascade" }).notNull(),
+  year: integer("year").notNull(),
+  month: integer("month").notNull(),
+  title: text("title"),
+  status: reportStatusEnum("status").default("draft").notNull(),
+  pdfUrl: text("pdf_url"),
+  recipientEmail: text("recipient_email"),
+  sentAt: timestamp("sent_at"),
+  notes: text("notes"),
+  createdAt: timestamp("created_at").defaultNow().notNull(),
+  updatedAt: timestamp("updated_at").defaultNow().notNull(),
+});
+
+export type Report = typeof reports.$inferSelect;
+export type NewReport = typeof reports.$inferInsert;

@@ -1,0 +1,17 @@
+{
+  "name": "agency-panel",
+  "private": true,
+  "workspaces": ["apps/*", "packages/*"],
+  "scripts": {
+    "dev": "turbo dev",
+    "build": "turbo build",
+    "db:push": "turbo db:push",
+    "db:studio": "cd packages/db && bun drizzle-kit studio",
+    "db:migrate": "cd packages/db && bun drizzle-kit migrate"
+  },
+  "devDependencies": {
+    "turbo": "^2.3.3",
+    "typescript": "^5.7.2"
+  },
+  "packageManager": "bun@1.1.42"
+}
