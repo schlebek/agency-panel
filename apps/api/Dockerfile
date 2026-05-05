@@ -1,19 +1,10 @@
-FROM oven/bun:1 AS base
+FROM oven/bun:1 AS builder
 WORKDIR /app
-
-FROM base AS deps
-COPY package.json ./
-COPY apps/api/package.json ./apps/api/
-COPY packages/db/package.json ./packages/db/
-COPY packages/types/package.json ./packages/types/
-RUN bun install
-
-FROM deps AS builder
 COPY . .
 RUN bun install
 RUN bun run --cwd apps/api build
 
-FROM base AS runner
+FROM oven/bun:1 AS runner
 WORKDIR /app
 
 RUN apt-get update && apt-get install -y \
@@ -21,10 +12,11 @@ RUN apt-get update && apt-get install -y \
   && rm -rf /var/lib/apt/lists/*
 
 ENV PUPPETEER_EXECUTABLE_PATH=/usr/bin/chromium
+ENV NODE_ENV=production
 
-COPY --from=builder /app/apps/api/dist ./dist
 COPY --from=builder /app/node_modules ./node_modules
+COPY --from=builder /app/apps/api/dist ./dist
+COPY --from=builder /app/packages ./packages
 
 EXPOSE 3001
-
 CMD ["bun", "run", "dist/index.js"]
