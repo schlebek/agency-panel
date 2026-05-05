@@ -2,10 +2,11 @@ FROM oven/bun:1 AS base
 WORKDIR /app
 
 FROM base AS deps
-COPY package.json bun.lockb ./
+COPY package.json ./
 COPY apps/web/package.json ./apps/web/
 COPY packages/db/package.json ./packages/db/
-RUN bun install --frozen-lockfile
+COPY packages/types/package.json ./packages/types/
+RUN bun install
 
 FROM deps AS builder
 COPY . .

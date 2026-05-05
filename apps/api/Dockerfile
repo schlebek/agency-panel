@@ -2,10 +2,11 @@ FROM oven/bun:1 AS base
 WORKDIR /app
 
 FROM base AS deps
-COPY package.json bun.lockb ./
+COPY package.json ./
 COPY apps/api/package.json ./apps/api/
 COPY packages/db/package.json ./packages/db/
-RUN bun install --frozen-lockfile
+COPY packages/types/package.json ./packages/types/
+RUN bun install
 
 FROM deps AS builder
 COPY . .
@@ -21,7 +22,7 @@ RUN apt-get update && apt-get install -y \
 ENV PUPPETEER_EXECUTABLE_PATH=/usr/bin/chromium
 
 COPY --from=builder /app/apps/api/dist ./dist
-COPY --from=deps /app/node_modules ./node_modules
+COPY --from=builder /app/node_modules ./node_modules
 
 EXPOSE 3001
 
