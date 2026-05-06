@@ -64,6 +64,6 @@ export const senutoSyncWorker = new Worker(
   }
 );
 
-senutoSyncWorker.on("failed", (job, err) => {
-  console.error(`[senuto-sync] Job ${job?.id} failed:`, err.message);
+senutoSyncWorker.on("failed", (job, err: any) => {
+  console.error(`[senuto-sync] Job ${job?.id} failed:`, err.message, err.response?.data ?? "");
 });

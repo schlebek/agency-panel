@@ -32,10 +32,13 @@ export class SenutoClient {
   }
 
   async getVisibility(projectId: string) {
-    const { data } = await axios.get(`${SENUTO_BASE_URL}/rank-tracker/visibility`, {
+    const url = `${SENUTO_BASE_URL}/rank-tracker/visibility`;
+    console.log(`[senuto] GET ${url} project_id=${projectId}`);
+    const { data } = await axios.get(url, {
       headers: this.headers,
       params: { project_id: projectId },
     });
+    console.log(`[senuto] visibility response:`, JSON.stringify(data).slice(0, 300));
     return data;
   }
 
