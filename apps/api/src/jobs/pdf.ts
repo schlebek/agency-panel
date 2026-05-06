@@ -3,10 +3,6 @@ import { db, reports, clients, senutoSnapshots, gscSnapshots, optimizationNotes,
 import { eq, and } from "drizzle-orm";
 import { uploadFile } from "../lib/storage";
 import { redis } from "../lib/redis";
-import { Resend } from "resend";
-
-const resend = new Resend(process.env.RESEND_API_KEY);
-
 export const pdfWorker = new Worker(
   "pdf-generation",
   async (job) => {

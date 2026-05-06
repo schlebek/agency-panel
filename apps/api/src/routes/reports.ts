@@ -5,6 +5,7 @@ import { db, reports, clients } from "@agency/db";
 import { eq, and, desc } from "drizzle-orm";
 import { requireAuth, requireOwnerOrAdmin } from "../middleware/auth";
 import { scheduleReportGeneration } from "../lib/queue";
+import { getPresignedUrl } from "../lib/storage";
 
 const app = new Hono();
 
@@ -77,6 +78,24 @@ app.get("/:id", async (c) => {
 
   if (!report) return c.json({ error: "Not found" }, 404);
   return c.json(report);
+});
+
+// Pobierz presigned URL do pobrania PDF
+app.get("/:id/download", async (c) => {
+  const tenant = c.get("tenant");
+  const { id } = c.req.param();
+
+  const [report] = await db
+    .select()
+    .from(reports)
+    .where(and(eq(reports.id, id), eq(reports.tenantId, tenant.id)))
+    .limit(1);
+
+  if (!report) return c.json({ error: "Not found" }, 404);
+  if (report.status !== "ready" || !report.pdfUrl) return c.json({ error: "PDF nie jest gotowy" }, 400);
+
+  const url = await getPresignedUrl(report.pdfUrl, 300);
+  return c.json({ url });
 });
 
 // Wyślij raport emailem

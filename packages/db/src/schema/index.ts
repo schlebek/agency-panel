@@ -4,3 +4,4 @@ export * from "./clients";
 export * from "./seo-data";
 export * from "./reports";
 export * from "./content";
+export * from "./client-accounts";

@@ -1,5 +1,5 @@
 import { Hono } from "hono";
-import { db, clients, senutoSnapshots, senutoKeywords } from "@agency/db";
+import { db, clients, tenants, senutoSnapshots, senutoKeywords } from "@agency/db";
 import { eq, and, desc, asc } from "drizzle-orm";
 import { requireAuth } from "../middleware/auth";
 import { getSenutoClient } from "../lib/senuto";
@@ -8,6 +8,22 @@ import { scheduleSenutoSync } from "../lib/queue";
 const app = new Hono();
 
 app.use("*", requireAuth);
+
+// Lista projektów Senuto dla tenanta (do wyboru przy dodawaniu klienta)
+app.get("/projects", async (c) => {
+  const tenant = c.get("tenant");
+  const [t] = await db.select().from(tenants).where(eq(tenants.id, tenant.id)).limit(1);
+
+  if (!t?.senutoApiKey) return c.json({ error: "Senuto not connected" }, 400);
+
+  try {
+    const senuto = getSenutoClient(t.senutoApiKey);
+    const data = await senuto.getProjects();
+    return c.json(data);
+  } catch (err: any) {
+    return c.json({ error: err.message }, 500);
+  }
+});
 
 // Pobierz historię widoczności (dane z cache)
 app.get("/:clientId/visibility", async (c) => {

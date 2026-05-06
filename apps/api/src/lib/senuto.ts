@@ -1,19 +1,34 @@
 import axios from "axios";
 
-const SENUTO_BASE_URL = "https://api.senuto.com/v1";
+const SENUTO_BASE_URL = "https://api.senuto.com/api";
 
 export class SenutoClient {
-  private apiKey: string;
+  private token: string;
 
-  constructor(apiKey: string) {
-    this.apiKey = apiKey;
+  constructor(token: string) {
+    this.token = token;
   }
 
   private get headers() {
     return {
-      Authorization: `Bearer ${this.apiKey}`,
+      Authorization: `Bearer ${this.token}`,
       "Content-Type": "application/json",
     };
+  }
+
+  static async authenticate(email: string, password: string): Promise<string> {
+    try {
+      const { data } = await axios.post(`${SENUTO_BASE_URL}/users/token`, { email, password }, {
+        headers: { "Content-Type": "application/json" },
+      });
+      const token = data?.data?.token;
+      if (!token) throw new Error("Brak tokena w odpowiedzi: " + JSON.stringify(data));
+      return token;
+    } catch (err: any) {
+      const msg = err.response?.data ? JSON.stringify(err.response.data) : err.message;
+      console.error("[senuto] auth error:", err.response?.status, msg);
+      throw new Error(msg);
+    }
   }
 
   async getVisibility(projectId: string) {
@@ -71,6 +86,6 @@ export class SenutoClient {
 
 export function getSenutoClient(tenantApiKey?: string | null): SenutoClient {
   const key = tenantApiKey ?? process.env.SENUTO_API_KEY!;
-  if (!key) throw new Error("Brak klucza API Senuto");
+  if (!key) throw new Error("Brak tokena API Senuto");
   return new SenutoClient(key);
 }

@@ -93,4 +93,42 @@ app.get("/me", requireAuth, async (c) => {
   return c.json({ user, tenant });
 });
 
+app.patch("/me", requireAuth, zValidator("json", z.object({
+  name: z.string().min(2).max(100).optional(),
+  email: z.string().email().optional(),
+  currentPassword: z.string().optional(),
+  newPassword: z.string().min(8).optional(),
+})), async (c) => {
+  const authUser = c.get("user");
+  const body = c.req.valid("json");
+
+  const [dbUser] = await db.select().from(users).where(eq(users.id, authUser.id)).limit(1);
+  if (!dbUser) return c.json({ error: "Not found" }, 404);
+
+  const updates: Partial<typeof users.$inferInsert> = { updatedAt: new Date() };
+
+  if (body.name) updates.name = body.name;
+
+  if (body.email && body.email !== dbUser.email) {
+    const [exists] = await db.select({ id: users.id }).from(users).where(eq(users.email, body.email)).limit(1);
+    if (exists) return c.json({ error: "Email już jest używany" }, 409);
+    updates.email = body.email;
+  }
+
+  if (body.newPassword) {
+    if (!body.currentPassword) return c.json({ error: "Podaj aktualne hasło" }, 400);
+    const valid = await verifyPassword(body.currentPassword, dbUser.passwordHash);
+    if (!valid) return c.json({ error: "Aktualne hasło jest nieprawidłowe" }, 400);
+    updates.passwordHash = await hashPassword(body.newPassword);
+  }
+
+  const [updated] = await db
+    .update(users)
+    .set(updates)
+    .where(eq(users.id, authUser.id))
+    .returning({ id: users.id, email: users.email, name: users.name, role: users.role, tenantId: users.tenantId });
+
+  return c.json({ user: updated });
+});
+
 export default app;

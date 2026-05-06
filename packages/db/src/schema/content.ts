@@ -37,7 +37,22 @@ export const linkFiles = pgTable("link_files", {
   createdAt: timestamp("created_at").defaultNow().notNull(),
 });
 
+// Briefy blogowe
+export const blogBriefs = pgTable("blog_briefs", {
+  id: uuid("id").primaryKey().defaultRandom(),
+  tenantId: uuid("tenant_id").references(() => tenants.id, { onDelete: "cascade" }).notNull(),
+  clientId: uuid("client_id").references(() => clients.id, { onDelete: "cascade" }).notNull(),
+  title: text("title").notNull(),
+  briefUrl: text("brief_url"),
+  status: text("status").$type<"pending" | "sent" | "published">().default("pending").notNull(),
+  publishUrl: text("publish_url"),
+  createdAt: timestamp("created_at").defaultNow().notNull(),
+  updatedAt: timestamp("updated_at").defaultNow().notNull(),
+});
+
 export type OptimizationNote = typeof optimizationNotes.$inferSelect;
 export type NewOptimizationNote = typeof optimizationNotes.$inferInsert;
 export type LinkFile = typeof linkFiles.$inferSelect;
 export type NewLinkFile = typeof linkFiles.$inferInsert;
+export type BlogBrief = typeof blogBriefs.$inferSelect;
+export type NewBlogBrief = typeof blogBriefs.$inferInsert;

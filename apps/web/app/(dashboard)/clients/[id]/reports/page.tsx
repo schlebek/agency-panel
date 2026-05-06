@@ -2,7 +2,7 @@
 import { useState } from "react";
 import useSWR from "swr";
 import { useParams } from "next/navigation";
-import { Plus, Send, FileText, X, Download } from "lucide-react";
+import { Plus, Send, FileText, X, Download, Loader2 } from "lucide-react";
 import { toast } from "sonner";
 import { api } from "@/lib/api";
 import { getMonthName } from "@/lib/utils";
@@ -33,6 +33,7 @@ export default function ReportsPage() {
   const [loading, setLoading] = useState(false);
   const [sendEmail, setSendEmail] = useState("");
   const [sendingId, setSendingId] = useState<string | null>(null);
+  const [downloadingId, setDownloadingId] = useState<string | null>(null);
   const [form, setForm] = useState({
     year: NOW.getFullYear(),
     month: NOW.getMonth() + 1,
@@ -78,6 +79,21 @@ export default function ReportsPage() {
     }
   }
 
+  async function handleDownload(reportId: string, title: string) {
+    setDownloadingId(reportId);
+    try {
+      const { data } = await api.get(`/reports/${reportId}/download`);
+      const a = document.createElement("a");
+      a.href = data.url;
+      a.download = `${title}.pdf`;
+      a.click();
+    } catch {
+      toast.error("Błąd pobierania PDF");
+    } finally {
+      setDownloadingId(null);
+    }
+  }
+
   const years = Array.from({ length: 3 }, (_, i) => NOW.getFullYear() - i);
   const months = Array.from({ length: 12 }, (_, i) => i + 1);
 
@@ -120,6 +136,20 @@ export default function ReportsPage() {
                   </p>
                 </div>
                 <div className="flex gap-2">
+                  {report.status === "ready" && (
+                    <button
+                      onClick={() => handleDownload(report.id, report.title)}
+                      disabled={downloadingId === report.id}
+                      className="flex items-center gap-1.5 px-3 py-1.5 border border-gray-200 text-gray-600 text-sm font-medium rounded-lg hover:bg-gray-50 transition-colors disabled:opacity-50"
+                      title="Pobierz PDF"
+                    >
+                      {downloadingId === report.id ? (
+                        <Loader2 className="w-3.5 h-3.5 animate-spin" />
+                      ) : (
+                        <Download className="w-3.5 h-3.5" />
+                      )}
+                    </button>
+                  )}
                   {report.status === "ready" && (
                     <div className="flex gap-2">
                       <input

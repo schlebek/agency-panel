@@ -13,11 +13,19 @@ app.use("*", requireAuth);
 const clientSchema = z.object({
   name: z.string().min(1).max(200),
   domain: z.string().min(1).max(500),
-  contactEmail: z.string().email().optional(),
-  senutoProjectId: z.string().optional(),
-  senutoApiKey: z.string().optional(),
-  gscPropertyUrl: z.string().optional(),
+  contactEmail: z.string().email().nullable().optional(),
+  clientType: z.enum(["shop", "company"]).nullable().optional(),
+  industry: z.string().max(100).nullable().optional(),
+  engine: z.string().max(100).nullable().optional(),
+  senutoProjectId: z.string().nullable().optional(),
+  senutoApiKey: z.string().nullable().optional(),
+  gscPropertyUrl: z.string().nullable().optional(),
 });
+
+function sanitizeClient(c: any) {
+  const { gscCredentials, ...rest } = c;
+  return { ...rest, hasGscCredentials: !!gscCredentials };
+}
 
 app.get("/", async (c) => {
   const tenant = c.get("tenant");
@@ -25,7 +33,7 @@ app.get("/", async (c) => {
     .select()
     .from(clients)
     .where(and(eq(clients.tenantId, tenant.id), eq(clients.isActive, true)));
-  return c.json(list);
+  return c.json(list.map(sanitizeClient));
 });
 
 app.post("/", requireOwnerOrAdmin, zValidator("json", clientSchema), async (c) => {
@@ -58,7 +66,7 @@ app.get("/:id", async (c) => {
     .limit(1);
 
   if (!client) return c.json({ error: "Not found" }, 404);
-  return c.json(client);
+  return c.json(sanitizeClient(client));
 });
 
 app.patch("/:id", requireOwnerOrAdmin, zValidator("json", clientSchema.partial()), async (c) => {
@@ -73,7 +81,7 @@ app.patch("/:id", requireOwnerOrAdmin, zValidator("json", clientSchema.partial()
     .returning();
 
   if (!client) return c.json({ error: "Not found" }, 404);
-  return c.json(client);
+  return c.json(sanitizeClient(client));
 });
 
 app.delete("/:id", requireOwnerOrAdmin, async (c) => {

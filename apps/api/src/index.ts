@@ -11,11 +11,17 @@ import gscRoutes from "./routes/gsc";
 import reportRoutes from "./routes/reports";
 import linkRoutes from "./routes/links";
 import noteRoutes from "./routes/notes";
+import settingsRoutes from "./routes/settings";
+import blogRoutes from "./routes/blog";
+import optimizationRoutes from "./routes/optimization";
+import clientPortalRoutes from "./routes/client-portal";
+import clientAccountRoutes from "./routes/client-accounts";
 
 // Start workers
 import "./jobs/senuto-sync";
 import "./jobs/gsc-sync";
 import "./jobs/pdf";
+import "./jobs/scheduler";
 
 const app = new Hono();
 
@@ -36,6 +42,11 @@ app.route("/gsc", gscRoutes);
 app.route("/reports", reportRoutes);
 app.route("/links", linkRoutes);
 app.route("/notes", noteRoutes);
+app.route("/settings", settingsRoutes);
+app.route("/clients", blogRoutes);
+app.route("/clients", optimizationRoutes);
+app.route("/clients", clientAccountRoutes);
+app.route("/client-portal", clientPortalRoutes);
 
 app.onError((err, c) => {
   console.error(err);

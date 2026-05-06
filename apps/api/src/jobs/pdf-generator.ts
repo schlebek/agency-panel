@@ -24,7 +24,10 @@ export async function generateReportPdf(data: ReportData): Promise<Buffer> {
 
   const html = buildReportHtml({ report, client, latestSeo, prevSeo, latestGsc, notes, links });
 
-  const browser = await puppeteer.launch({ args: ["--no-sandbox", "--disable-setuid-sandbox"] });
+  const browser = await puppeteer.launch({
+    executablePath: process.env.PUPPETEER_EXECUTABLE_PATH ?? "/usr/bin/chromium",
+    args: ["--no-sandbox", "--disable-setuid-sandbox", "--disable-dev-shm-usage"],
+  });
   const page = await browser.newPage();
   await page.setContent(html, { waitUntil: "networkidle0" });
 

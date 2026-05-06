@@ -1,7 +1,7 @@
 import { Queue, Worker } from "bullmq";
 import { redis } from "./redis";
 
-const connection = { host: redis.options.host, port: redis.options.port as number };
+const connection = { host: redis.options.host, port: redis.options.port as number, password: redis.options.password as string | undefined };
 
 export const pdfQueue = new Queue("pdf-generation", { connection });
 export const emailQueue = new Queue("email-sending", { connection });
