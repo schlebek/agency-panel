@@ -31,58 +31,38 @@ export class SenutoClient {
     }
   }
 
-  async getVisibility(projectId: string) {
-    const url = `${SENUTO_BASE_URL}/rank-tracker/visibility`;
-    console.log(`[senuto] GET ${url} project_id=${projectId}`);
-    const { data } = await axios.get(url, {
-      headers: this.headers,
-      params: { project_id: projectId },
-    });
-    console.log(`[senuto] visibility response:`, JSON.stringify(data).slice(0, 300));
-    return data;
-  }
-
-  async getKeywordPositions(projectId: string, params?: {
-    dateFrom?: string;
-    dateTo?: string;
+  async getVisibilityKeywords(domain: string, params?: {
+    dateMin?: string;
+    dateMax?: string;
+    countryId?: number;
     limit?: number;
-    offset?: number;
+    page?: number;
   }) {
-    const { data } = await axios.get(`${SENUTO_BASE_URL}/rank-tracker/keywords`, {
-      headers: this.headers,
-      params: { project_id: projectId, ...params },
-    });
-    return data;
-  }
+    const today = new Date().toISOString().split("T")[0];
+    const sevenDaysAgo = new Date(Date.now() - 7 * 24 * 60 * 60 * 1000).toISOString().split("T")[0];
 
-  async getVisibilityHistory(projectId: string, dateFrom: string, dateTo: string) {
-    const { data } = await axios.get(`${SENUTO_BASE_URL}/rank-tracker/visibility/history`, {
-      headers: this.headers,
-      params: { project_id: projectId, date_from: dateFrom, date_to: dateTo },
-    });
-    return data;
-  }
+    const body = {
+      domain,
+      date_min: params?.dateMin ?? sevenDaysAgo,
+      date_max: params?.dateMax ?? today,
+      country_id: params?.countryId ?? 105,
+      fetch_mode: 1,
+      limit: params?.limit ?? 500,
+      page: params?.page ?? 1,
+      order: { column: "position", dir: "asc" },
+      days_compare_mode: 7,
+      isDataReadyToLoad: true,
+    };
 
-  async getBiggestGainers(projectId: string, limit = 10) {
-    const { data } = await axios.get(`${SENUTO_BASE_URL}/rank-tracker/keywords/gainers`, {
-      headers: this.headers,
-      params: { project_id: projectId, limit },
-    });
-    return data;
-  }
+    console.log("[senuto] POST visibility_analysis/reports/history/keywords/getData", domain, body);
 
-  async getBiggestLosers(projectId: string, limit = 10) {
-    const { data } = await axios.get(`${SENUTO_BASE_URL}/rank-tracker/keywords/losers`, {
-      headers: this.headers,
-      params: { project_id: projectId, limit },
-    });
-    return data;
-  }
+    const { data } = await axios.post(
+      `${SENUTO_BASE_URL}/visibility_analysis/reports/history/keywords/getData`,
+      body,
+      { headers: this.headers }
+    );
 
-  async getProjects() {
-    const { data } = await axios.get(`${SENUTO_BASE_URL}/rank-tracker/projects`, {
-      headers: this.headers,
-    });
+    console.log("[senuto] keywords response:", JSON.stringify(data).slice(0, 300));
     return data;
   }
 }

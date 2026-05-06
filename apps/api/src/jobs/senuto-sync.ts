@@ -10,53 +10,67 @@ export const senutoSyncWorker = new Worker(
     const { clientId, tenantId } = job.data;
 
     const [client] = await db.select().from(clients).where(eq(clients.id, clientId)).limit(1);
-    if (!client?.senutoProjectId) {
-      throw new Error(`Client ${clientId} has no Senuto project configured`);
+    if (!client?.domain) {
+      throw new Error(`Client ${clientId} has no domain configured`);
     }
 
     const [tenant] = await db.select().from(tenants).where(eq(tenants.id, tenantId)).limit(1);
 
     const apiKey = client.senutoApiKey ?? tenant?.senutoApiKey ?? process.env.SENUTO_API_KEY!;
+    if (!apiKey) {
+      throw new Error(`Client ${clientId}: missing Senuto API key (set in tenant settings or SENUTO_API_KEY env)`);
+    }
+
     const senuto = getSenutoClient(apiKey);
 
-    const [visibility, keywords] = await Promise.all([
-      senuto.getVisibility(client.senutoProjectId),
-      senuto.getKeywordPositions(client.senutoProjectId, { limit: 500 }),
-    ]);
+    // Use senutoDomain override if set, otherwise fall back to client domain
+    const domain = (client.senutoProjectId && client.senutoProjectId.includes("."))
+      ? client.senutoProjectId
+      : client.domain;
+
+    const keywords = await senuto.getVisibilityKeywords(domain, { limit: 500 });
+    const kwList: any[] = keywords?.data ?? [];
 
     const snapshotDate = new Date();
+
+    // Calculate visibility buckets from keyword positions
+    const top3 = kwList.filter((kw) => kw.position != null && kw.position <= 3).length;
+    const top10 = kwList.filter((kw) => kw.position != null && kw.position <= 10).length;
+    const top50 = kwList.filter((kw) => kw.position != null && kw.position <= 50).length;
+    const top100 = kwList.filter((kw) => kw.position != null && kw.position <= 100).length;
+    const totalKeywords = keywords?.meta?.total ?? kwList.length;
+    const visibilityIndex = keywords?.meta?.visibility_index?.toString() ?? null;
 
     await db.insert(senutoSnapshots).values({
       clientId,
       snapshotDate,
-      top3: visibility?.top3 ?? null,
-      top10: visibility?.top10 ?? null,
-      top50: visibility?.top50 ?? null,
-      top100: visibility?.top100 ?? null,
-      totalKeywords: visibility?.total ?? null,
-      visibilityIndex: visibility?.visibility_index?.toString() ?? null,
-      rawData: visibility,
+      top3,
+      top10,
+      top50,
+      top100,
+      totalKeywords,
+      visibilityIndex,
+      rawData: { domain, meta: keywords?.meta ?? null },
     });
 
-    if (keywords?.data?.length) {
-      const rows = keywords.data.map((kw: any) => ({
+    if (kwList.length > 0) {
+      const rows = kwList.map((kw: any) => ({
         clientId,
         snapshotDate,
-        keyword: kw.keyword,
-        position: kw.position,
-        previousPosition: kw.previous_position,
-        positionChange: kw.position_change,
-        searchVolume: kw.search_volume,
-        url: kw.url,
+        keyword: kw.keyword ?? kw.phrase ?? "",
+        position: kw.position ?? null,
+        previousPosition: kw.position_prev ?? kw.previous_position ?? null,
+        positionChange: kw.position_change ?? null,
+        searchVolume: kw.search_volume ?? kw.volume ?? null,
+        url: kw.url ?? null,
       }));
 
-      // Wstaw partiami po 500
       for (let i = 0; i < rows.length; i += 500) {
         await db.insert(senutoKeywords).values(rows.slice(i, i + 500));
       }
     }
 
-    console.log(`[senuto-sync] Client ${clientId}: synced ${keywords?.data?.length ?? 0} keywords`);
+    console.log(`[senuto-sync] Client ${clientId} (${domain}): synced ${kwList.length} keywords`);
   },
   {
     connection: redis,

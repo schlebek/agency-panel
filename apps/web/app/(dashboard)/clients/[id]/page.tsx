@@ -175,10 +175,10 @@ function EditClientModal({ client, onClose, onSuccess }: { client: any; onClose:
             <p className="text-xs font-semibold text-gray-400 uppercase tracking-wider mb-3">Integracje</p>
             <div className="space-y-3">
               <div>
-                <label className="block text-xs font-medium text-gray-500 uppercase tracking-wider mb-1.5">ID projektu Senuto</label>
+                <label className="block text-xs font-medium text-gray-500 uppercase tracking-wider mb-1.5">Domena Senuto <span className="text-gray-300 normal-case font-normal">(opcjonalnie — domyślnie domena klienta)</span></label>
                 <input name="senutoProjectId" value={form.senutoProjectId} onChange={handleChange}
                   className="w-full px-3.5 py-2.5 border border-gray-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500"
-                  placeholder="np. 12345" />
+                  placeholder="np. example.com (zostaw puste by użyć domeny klienta)" />
               </div>
               <div>
                 <label className="block text-xs font-medium text-gray-500 uppercase tracking-wider mb-1.5">URL właściwości GSC</label>
@@ -532,9 +532,10 @@ export default function ClientPage() {
               </div>
               <div>
                 <p className="text-xs text-gray-400 mb-1">Senuto</p>
-                <p className="text-sm">{client.senutoProjectId
-                  ? <span className="text-green-600">Skonfigurowano ({client.senutoProjectId})</span>
-                  : <span className="text-amber-500">Nie skonfigurowano</span>}
+                <p className="text-sm">
+                  {client.senutoProjectId && client.senutoProjectId.includes(".")
+                    ? <span className="text-green-600">Śledzi: {client.senutoProjectId}</span>
+                    : <span className="text-gray-500">Śledzi: {client.domain}</span>}
                 </p>
               </div>
               <div>
