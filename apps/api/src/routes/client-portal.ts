@@ -122,5 +122,135 @@ app.get("/data", requireClientAuth, async (c) => {
   return c.json({ notes, briefs, links });
 });
 
+// SEO history (Senuto) — ostatnie 12 miesięcy, jeden snapshot na miesiąc
+app.get("/seo-history", requireClientAuth, async (c) => {
+  const account = c.get("clientAccount");
+  const { clientId } = account;
+  const { senutoSnapshots } = await import("@agency/db");
+  const { desc } = await import("drizzle-orm");
+
+  const rows = await db.select({
+    snapshotDate: senutoSnapshots.snapshotDate,
+    top3: senutoSnapshots.top3,
+    top10: senutoSnapshots.top10,
+    top50: senutoSnapshots.top50,
+  })
+    .from(senutoSnapshots)
+    .where(eq(senutoSnapshots.clientId, clientId))
+    .orderBy(desc(senutoSnapshots.snapshotDate))
+    .limit(400);
+
+  const byMonth = new Map<string, any>();
+  for (const s of rows) {
+    const month = s.snapshotDate.toISOString().substring(0, 7);
+    if (!byMonth.has(month)) byMonth.set(month, { month, top3: s.top3, top10: s.top10, top50: s.top50 });
+  }
+
+  const history = Array.from(byMonth.values())
+    .sort((a: any, b: any) => a.month.localeCompare(b.month))
+    .slice(-12);
+
+  return c.json({ history });
+});
+
+// GSC history — ostatnie snapshoty dla wykresu ruchu
+app.get("/gsc-history", requireClientAuth, async (c) => {
+  const account = c.get("clientAccount");
+  const { clientId } = account;
+  const { gscSnapshots } = await import("@agency/db");
+  const { desc } = await import("drizzle-orm");
+
+  const rows = await db.select({
+    dateTo: gscSnapshots.dateTo,
+    clicks: gscSnapshots.clicks,
+    impressions: gscSnapshots.impressions,
+  })
+    .from(gscSnapshots)
+    .where(eq(gscSnapshots.clientId, clientId))
+    .orderBy(desc(gscSnapshots.dateTo))
+    .limit(12);
+
+  const history = rows.reverse().map((s) => ({
+    month: new Date(s.dateTo).toISOString().substring(0, 7),
+    clicks: s.clicks ?? 0,
+    impressions: s.impressions ?? 0,
+  }));
+
+  return c.json({ history });
+});
+
+// GSC monthly data — dane dla wybranego miesiąca z porównaniami
+app.get("/gsc-data", requireClientAuth, async (c) => {
+  const account = c.get("clientAccount");
+  const { clientId } = account;
+  const month = c.req.query("month") ?? new Date().toISOString().substring(0, 7);
+
+  const { gscSnapshots, gscTopPages, gscTopQueries } = await import("@agency/db");
+  const { desc, gte, lte } = await import("drizzle-orm");
+
+  const allSnaps = await db.select()
+    .from(gscSnapshots)
+    .where(eq(gscSnapshots.clientId, clientId))
+    .orderBy(desc(gscSnapshots.dateTo))
+    .limit(50);
+
+  function findForMonth(m: string) {
+    const [y, mo] = m.split("-").map(Number);
+    const start = new Date(y, mo - 1, 1);
+    const end = new Date(y, mo, 0, 23, 59, 59);
+    const inMonth = allSnaps.find((s) => {
+      const d = new Date(s.dateTo);
+      return d >= start && d <= end;
+    });
+    if (inMonth) return inMonth;
+    return allSnaps.find((s) => new Date(s.dateTo) <= end) ?? null;
+  }
+
+  function toObj(s: any) {
+    if (!s) return null;
+    return {
+      clicks: s.clicks ?? 0,
+      impressions: s.impressions ?? 0,
+      ctr: parseFloat(s.ctr ?? "0"),
+      avgPosition: parseFloat(s.avgPosition ?? "0"),
+    };
+  }
+
+  const [y, mo] = month.split("-").map(Number);
+  const prevMonth = mo === 1 ? `${y - 1}-12` : `${y}-${String(mo - 1).padStart(2, "0")}`;
+  const yearAgoMonth = `${y - 1}-${String(mo).padStart(2, "0")}`;
+
+  const currentSnap = findForMonth(month);
+  const prevSnap = findForMonth(prevMonth);
+  const yearAgoSnap = findForMonth(yearAgoMonth);
+
+  let queries: any[] = [];
+  let pages: any[] = [];
+
+  if (currentSnap) {
+    const d = new Date(currentSnap.dateTo);
+    const from = new Date(d); from.setDate(from.getDate() - 1);
+    const to = new Date(d); to.setDate(to.getDate() + 2);
+
+    [queries, pages] = await Promise.all([
+      db.select().from(gscTopQueries)
+        .where(and(eq(gscTopQueries.clientId, clientId), gte(gscTopQueries.snapshotDate, from), lte(gscTopQueries.snapshotDate, to)))
+        .orderBy(desc(gscTopQueries.clicks)).limit(10),
+      db.select().from(gscTopPages)
+        .where(and(eq(gscTopPages.clientId, clientId), gte(gscTopPages.snapshotDate, from), lte(gscTopPages.snapshotDate, to)))
+        .orderBy(desc(gscTopPages.clicks)).limit(10),
+    ]);
+  }
+
+  return c.json({
+    month,
+    current: toObj(currentSnap),
+    previous: toObj(prevSnap),
+    yearAgo: toObj(yearAgoSnap),
+    queries: queries.map((q) => ({ query: q.query, clicks: q.clicks, impressions: q.impressions, ctr: parseFloat(q.ctr ?? "0"), avgPosition: parseFloat(q.avgPosition ?? "0") })),
+    pages: pages.map((p) => ({ page: p.page, clicks: p.clicks, impressions: p.impressions, ctr: parseFloat(p.ctr ?? "0"), avgPosition: parseFloat(p.avgPosition ?? "0") })),
+  });
+});
+
 export { requireClientAuth };
 export default app;
