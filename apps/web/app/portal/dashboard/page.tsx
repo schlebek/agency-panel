@@ -70,7 +70,7 @@ function CollapsibleSection({ title, icon: Icon, children, defaultOpen = true }:
   return (
     <div className="bg-white rounded-2xl border border-gray-100 overflow-hidden">
       <button
-        onClick={() => setOpen((o) => !o)}
+        onClick={() => setOpen((o: boolean) => !o)}
         className="w-full flex items-center justify-between px-6 py-4 hover:bg-gray-50 transition-colors"
       >
         <div className="flex items-center gap-3">
