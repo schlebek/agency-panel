@@ -41,29 +41,30 @@ export class SenutoClient {
     const today = new Date().toISOString().split("T")[0];
     const sevenDaysAgo = new Date(Date.now() - 7 * 24 * 60 * 60 * 1000).toISOString().split("T")[0];
 
-    const body = {
+    const body: Record<string, any> = {
       domain,
       date_min: params?.dateMin ?? sevenDaysAgo,
       date_max: params?.dateMax ?? today,
       country_id: params?.countryId ?? 105,
-      fetch_mode: 1,
       limit: params?.limit ?? 500,
       page: params?.page ?? 1,
-      order: { column: "position", dir: "asc" },
-      days_compare_mode: 7,
-      isDataReadyToLoad: true,
     };
 
-    console.log("[senuto] POST visibility_analysis/reports/history/keywords/getData", domain, body);
+    console.log("[senuto] POST visibility_analysis/reports/history/keywords/getData", JSON.stringify(body));
 
-    const { data } = await axios.post(
-      `${SENUTO_BASE_URL}/visibility_analysis/reports/history/keywords/getData`,
-      body,
-      { headers: this.headers }
-    );
-
-    console.log("[senuto] keywords response:", JSON.stringify(data).slice(0, 300));
-    return data;
+    try {
+      const { data } = await axios.post(
+        `${SENUTO_BASE_URL}/visibility_analysis/reports/history/keywords/getData`,
+        body,
+        { headers: this.headers }
+      );
+      console.log("[senuto] keywords response:", JSON.stringify(data).slice(0, 500));
+      return data;
+    } catch (err: any) {
+      const errData = err.response?.data;
+      console.error("[senuto] keywords error", err.response?.status, JSON.stringify(errData, null, 2));
+      throw err;
+    }
   }
 }
 
