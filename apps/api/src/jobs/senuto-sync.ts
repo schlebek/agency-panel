@@ -1,7 +1,7 @@
 import { Worker } from "bullmq";
 import { db, clients, tenants, senutoSnapshots } from "@agency/db";
 import { eq } from "drizzle-orm";
-import { getSenutoClient } from "../lib/senuto";
+import { getSenutoClient, ensureValidSenutoToken } from "../lib/senuto";
 import { redis } from "../lib/redis";
 
 function getLatestValue(obj: Record<string, number> | undefined): number | null {
@@ -23,11 +23,12 @@ export const senutoSyncWorker = new Worker(
 
     const [tenant] = await db.select().from(tenants).where(eq(tenants.id, tenantId)).limit(1);
 
-    const apiKey = client.senutoApiKey ?? tenant?.senutoApiKey ?? process.env.SENUTO_API_KEY!;
-    if (!apiKey) {
+    const rawKey = client.senutoApiKey ?? tenant?.senutoApiKey ?? process.env.SENUTO_API_KEY!;
+    if (!rawKey) {
       throw new Error(`Client ${clientId}: missing Senuto API key`);
     }
 
+    const apiKey = await ensureValidSenutoToken(tenantId, rawKey);
     const senuto = getSenutoClient(apiKey);
 
     // Use senutoDomain override if it looks like a domain, else use client.domain

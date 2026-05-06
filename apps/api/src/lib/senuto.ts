@@ -1,6 +1,39 @@
 import axios from "axios";
+import { db, tenants } from "@agency/db";
+import { eq } from "drizzle-orm";
 
 const SENUTO_BASE_URL = "https://api.senuto.com/api";
+
+function decodeJwtExpiry(token: string): number | null {
+  try {
+    const payload = JSON.parse(Buffer.from(token.split(".")[1], "base64").toString());
+    return payload.exp ?? null;
+  } catch {
+    return null;
+  }
+}
+
+export async function ensureValidSenutoToken(tenantId: string, currentToken: string): Promise<string> {
+  const exp = decodeJwtExpiry(currentToken);
+  const sevenDaysFromNow = Math.floor(Date.now() / 1000) + 7 * 24 * 3600;
+
+  if (exp && exp > sevenDaysFromNow) {
+    return currentToken;
+  }
+
+  const email = process.env.SENUTO_EMAIL;
+  const password = process.env.SENUTO_PASSWORD;
+  if (!email || !password) {
+    console.warn("[senuto] Token expiring but SENUTO_EMAIL/SENUTO_PASSWORD not set — skipping renewal");
+    return currentToken;
+  }
+
+  console.log("[senuto] Token expiring soon — refreshing...");
+  const newToken = await SenutoClient.authenticate(email, password);
+  await db.update(tenants).set({ senutoApiKey: newToken }).where(eq(tenants.id, tenantId));
+  console.log("[senuto] Token refreshed and saved to DB");
+  return newToken;
+}
 
 export class SenutoClient {
   private token: string;
