@@ -16,6 +16,7 @@ interface Tenant {
   name: string;
   slug: string;
   plan: string;
+  trialEndsAt?: string | null;
 }
 
 interface AuthState {
