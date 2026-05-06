@@ -45,7 +45,7 @@ export class SenutoClient {
       domain,
       date_min: params?.dateMin ?? sevenDaysAgo,
       date_max: params?.dateMax ?? today,
-      country_id: params?.countryId ?? 105,
+      country_id: params?.countryId ?? 1,
       limit: params?.limit ?? 500,
       page: params?.page ?? 1,
     };
