@@ -1,8 +1,15 @@
 import { Worker } from "bullmq";
-import { db, clients, tenants, senutoSnapshots, senutoKeywords } from "@agency/db";
+import { db, clients, tenants, senutoSnapshots } from "@agency/db";
 import { eq } from "drizzle-orm";
 import { getSenutoClient } from "../lib/senuto";
 import { redis } from "../lib/redis";
+
+function getLatestValue(obj: Record<string, number> | undefined): number | null {
+  if (!obj || typeof obj !== "object") return null;
+  const dates = Object.keys(obj).sort();
+  const latest = dates[dates.length - 1];
+  return latest != null ? (obj[latest] ?? null) : null;
+}
 
 export const senutoSyncWorker = new Worker(
   "senuto-sync",
@@ -18,59 +25,38 @@ export const senutoSyncWorker = new Worker(
 
     const apiKey = client.senutoApiKey ?? tenant?.senutoApiKey ?? process.env.SENUTO_API_KEY!;
     if (!apiKey) {
-      throw new Error(`Client ${clientId}: missing Senuto API key (set in tenant settings or SENUTO_API_KEY env)`);
+      throw new Error(`Client ${clientId}: missing Senuto API key`);
     }
 
     const senuto = getSenutoClient(apiKey);
 
-    // Use senutoDomain override if set, otherwise fall back to client domain
+    // Use senutoDomain override if it looks like a domain, else use client.domain
     const domain = (client.senutoProjectId && client.senutoProjectId.includes("."))
       ? client.senutoProjectId
       : client.domain;
 
-    const keywords = await senuto.getVisibilityKeywords(domain, { limit: 500 });
-    const kwList: any[] = keywords?.data ?? [];
+    const result = await senuto.getPositionsHistory(domain);
 
-    const snapshotDate = new Date();
+    const domainData = result?.data?.[0]?.data?.all ?? {};
 
-    // Calculate visibility buckets from keyword positions
-    const top3 = kwList.filter((kw) => kw.position != null && kw.position <= 3).length;
-    const top10 = kwList.filter((kw) => kw.position != null && kw.position <= 10).length;
-    const top50 = kwList.filter((kw) => kw.position != null && kw.position <= 50).length;
-    const top100 = kwList.filter((kw) => kw.position != null && kw.position <= 100).length;
-    const totalKeywords = keywords?.meta?.total ?? kwList.length;
-    const visibilityIndex = keywords?.meta?.visibility_index?.toString() ?? null;
+    const top3 = getLatestValue(domainData.keywords_top3);
+    const top10 = getLatestValue(domainData.keywords_top10);
+    const top50 = getLatestValue(domainData.keywords_top50);
+    const top100 = getLatestValue(domainData.keywords_top100);
 
     await db.insert(senutoSnapshots).values({
       clientId,
-      snapshotDate,
+      snapshotDate: new Date(),
       top3,
       top10,
       top50,
       top100,
-      totalKeywords,
-      visibilityIndex,
-      rawData: { domain, meta: keywords?.meta ?? null },
+      totalKeywords: top100,
+      visibilityIndex: null,
+      rawData: { domain, meta: domainData },
     });
 
-    if (kwList.length > 0) {
-      const rows = kwList.map((kw: any) => ({
-        clientId,
-        snapshotDate,
-        keyword: kw.keyword ?? kw.phrase ?? "",
-        position: kw.position ?? null,
-        previousPosition: kw.position_prev ?? kw.previous_position ?? null,
-        positionChange: kw.position_change ?? null,
-        searchVolume: kw.search_volume ?? kw.volume ?? null,
-        url: kw.url ?? null,
-      }));
-
-      for (let i = 0; i < rows.length; i += 500) {
-        await db.insert(senutoKeywords).values(rows.slice(i, i + 500));
-      }
-    }
-
-    console.log(`[senuto-sync] Client ${clientId} (${domain}): synced ${kwList.length} keywords`);
+    console.log(`[senuto-sync] Client ${clientId} (${domain}): top3=${top3} top10=${top10} top50=${top50} top100=${top100}`);
   },
   {
     connection: redis,
@@ -79,5 +65,5 @@ export const senutoSyncWorker = new Worker(
 );
 
 senutoSyncWorker.on("failed", (job, err: any) => {
-  console.error(`[senuto-sync] Job ${job?.id} failed:`, err.message, err.response?.data ?? "");
+  console.error(`[senuto-sync] Job ${job?.id} failed:`, err.message);
 });

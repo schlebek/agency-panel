@@ -13,13 +13,14 @@ export class SenutoClient {
     return {
       Authorization: `Bearer ${this.token}`,
       "Content-Type": "application/json",
+      "Lang": "pl-PL",
     };
   }
 
   static async authenticate(email: string, password: string): Promise<string> {
     try {
       const { data } = await axios.post(`${SENUTO_BASE_URL}/users/token`, { email, password }, {
-        headers: { "Content-Type": "application/json" },
+        headers: { "Content-Type": "application/json", "Lang": "pl-PL" },
       });
       const token = data?.data?.token;
       if (!token) throw new Error("Brak tokena w odpowiedzi: " + JSON.stringify(data));
@@ -31,38 +32,33 @@ export class SenutoClient {
     }
   }
 
-  async getVisibilityKeywords(domain: string, params?: {
+  async getPositionsHistory(domain: string, params?: {
     dateMin?: string;
     dateMax?: string;
     countryId?: number;
-    limit?: number;
-    page?: number;
+    dateInterval?: "daily" | "weekly";
   }) {
     const today = new Date().toISOString().split("T")[0];
-    const sevenDaysAgo = new Date(Date.now() - 7 * 24 * 60 * 60 * 1000).toISOString().split("T")[0];
+    const thirtyDaysAgo = new Date(Date.now() - 30 * 24 * 60 * 60 * 1000).toISOString().split("T")[0];
 
-    const body: Record<string, any> = {
+    const qs = new URLSearchParams({
       domain,
-      date_min: params?.dateMin ?? sevenDaysAgo,
+      fetch_mode: "topLevelDomain",
+      country_id: String(params?.countryId ?? 1),
+      date_min: params?.dateMin ?? thirtyDaysAgo,
       date_max: params?.dateMax ?? today,
-      country_id: params?.countryId ?? 1,
-      limit: params?.limit ?? 500,
-      page: params?.page ?? 1,
-    };
+      date_interval: params?.dateInterval ?? "daily",
+    });
 
-    console.log("[senuto] POST visibility_analysis/reports/history/keywords/getData", JSON.stringify(body));
+    const url = `${SENUTO_BASE_URL}/visibility_analysis/reports/domain_positions/getPositionsHistoryChartDataForAllTypes?${qs}`;
+    console.log("[senuto] GET positions history for:", domain);
 
     try {
-      const { data } = await axios.post(
-        `${SENUTO_BASE_URL}/visibility_analysis/reports/history/keywords/getData`,
-        body,
-        { headers: this.headers }
-      );
-      console.log("[senuto] keywords response:", JSON.stringify(data).slice(0, 500));
+      const { data } = await axios.get(url, { headers: this.headers });
+      console.log("[senuto] positions response:", JSON.stringify(data).slice(0, 300));
       return data;
     } catch (err: any) {
-      const errData = err.response?.data;
-      console.error("[senuto] keywords error", err.response?.status, JSON.stringify(errData, null, 2));
+      console.error("[senuto] error", err.response?.status, JSON.stringify(err.response?.data));
       throw err;
     }
   }
