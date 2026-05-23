@@ -20,6 +20,7 @@ const clientSchema = z.object({
   senutoProjectId: z.string().nullable().optional(),
   senutoApiKey: z.string().nullable().optional(),
   gscPropertyUrl: z.string().nullable().optional(),
+  adsNotes: z.string().nullable().optional(),
 });
 
 function sanitizeClient(c: any) {

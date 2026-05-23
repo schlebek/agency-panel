@@ -11,7 +11,7 @@ import {
   TrendingUp, Globe, LogOut, CheckSquare, Square, BookOpen, Link2,
   FileEdit, CheckCircle2, Clock, Send, ExternalLink, ChevronDown, ChevronUp,
   BarChart3, Zap, FileText, TrendingDown, Minus, Search, MousePointerClick,
-  Eye, ChevronLeft, ChevronRight,
+  Eye, ChevronLeft, ChevronRight, MessageCircle,
 } from "lucide-react";
 
 const portalFetcher = (url: string) => portalApi.get(url).then((r) => r.data);
@@ -208,11 +208,14 @@ export default function PortalDashboard() {
 
   const currentMonth = new Date().toISOString().substring(0, 7);
   const [selectedMonth, setSelectedMonth] = useState(currentMonth);
+  const [commentText, setCommentText] = useState("");
+  const [sendingComment, setSendingComment] = useState(false);
 
   const { data: portalData, isLoading } = useSWR("/client-portal/data", portalFetcher);
   const { data: seoHistory } = useSWR("/client-portal/seo-history", portalFetcher);
   const { data: gscHistory } = useSWR("/client-portal/gsc-history", portalFetcher);
   const { data: gscData } = useSWR(`/client-portal/gsc-data?month=${selectedMonth}`, portalFetcher);
+  const { data: comments, mutate: mutateComments } = useSWR("/client-portal/comments", portalFetcher);
 
   useEffect(() => {
     if (!account) router.push("/portal/login");
@@ -635,6 +638,64 @@ export default function PortalDashboard() {
                 {client.domain}
                 <ExternalLink className="w-3 h-3" />
               </a>
+            </div>
+
+            {/* Komentarze / wiadomości */}
+            <div className="bg-white rounded-2xl border border-gray-100 overflow-hidden">
+              <div className="flex items-center gap-2 px-5 py-4 border-b border-gray-50">
+                <MessageCircle className="w-4 h-4 text-indigo-500" />
+                <h3 className="text-sm font-semibold text-gray-900">Wiadomości</h3>
+              </div>
+              <div className="p-4">
+                {/* Send message */}
+                <div className="flex gap-2 mb-4">
+                  <textarea
+                    value={commentText}
+                    onChange={(e) => setCommentText(e.target.value)}
+                    rows={2}
+                    placeholder="Napisz wiadomość do agencji..."
+                    className="flex-1 px-3 py-2 border border-gray-200 rounded-xl text-sm resize-none focus:outline-none focus:ring-2 focus:ring-indigo-500"
+                  />
+                  <button
+                    disabled={!commentText.trim() || sendingComment}
+                    onClick={async () => {
+                      if (!commentText.trim()) return;
+                      setSendingComment(true);
+                      try {
+                        await portalApi.post("/client-portal/comments", { content: commentText.trim() });
+                        setCommentText("");
+                        mutateComments();
+                      } catch {}
+                      finally { setSendingComment(false); }
+                    }}
+                    className="px-3 py-2 bg-indigo-600 text-white rounded-xl hover:bg-indigo-700 disabled:opacity-50 transition-colors self-end">
+                    <Send className="w-4 h-4" />
+                  </button>
+                </div>
+
+                {/* Message list */}
+                {!comments || comments.length === 0 ? (
+                  <p className="text-xs text-gray-400 text-center py-4">Brak wiadomości</p>
+                ) : (
+                  <div className="space-y-3 max-h-64 overflow-y-auto">
+                    {comments.map((c: any) => (
+                      <div key={c.id} className={`flex gap-2 ${c.authorType === "client" ? "flex-row-reverse" : ""}`}>
+                        <div className="w-7 h-7 rounded-full bg-indigo-100 flex items-center justify-center flex-shrink-0">
+                          <span className="text-xs font-bold text-indigo-700">{c.authorName?.[0]?.toUpperCase()}</span>
+                        </div>
+                        <div className={`max-w-[75%] ${c.authorType === "client" ? "items-end" : "items-start"} flex flex-col`}>
+                          <div className={`px-3 py-2 rounded-2xl text-sm ${c.authorType === "client" ? "bg-indigo-600 text-white rounded-tr-sm" : "bg-gray-100 text-gray-800 rounded-tl-sm"}`}>
+                            {c.content}
+                          </div>
+                          <p className="text-xs text-gray-400 mt-0.5 px-1">
+                            {c.authorType === "agency" ? c.authorName : "Ty"} · {new Date(c.createdAt).toLocaleDateString("pl-PL")}
+                          </p>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                )}
+              </div>
             </div>
           </div>
         </div>

@@ -1,8 +1,8 @@
 "use client";
-import { useState } from "react";
+import { useState, useRef, useEffect } from "react";
 import useSWR from "swr";
 import { useParams } from "next/navigation";
-import { Plus, X, FileEdit } from "lucide-react";
+import { Plus, X, FileEdit, Mic, MicOff, Loader2 } from "lucide-react";
 import { toast } from "sonner";
 import { api } from "@/lib/api";
 import { getMonthName } from "@/lib/utils";
@@ -41,6 +41,45 @@ export default function NotesPage() {
     content: "",
     url: "",
   });
+
+  // Voice recording state
+  const [recording, setRecording] = useState(false);
+  const [transcribing, setTranscribing] = useState(false);
+  const mediaRecorderRef = useRef<MediaRecorder | null>(null);
+  const chunksRef = useRef<Blob[]>([]);
+
+  async function startRecording() {
+    try {
+      const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+      const mediaRecorder = new MediaRecorder(stream);
+      chunksRef.current = [];
+      mediaRecorder.ondataavailable = (e) => { if (e.data.size > 0) chunksRef.current.push(e.data); };
+      mediaRecorder.onstop = async () => {
+        stream.getTracks().forEach((t) => t.stop());
+        const blob = new Blob(chunksRef.current, { type: "audio/webm" });
+        setTranscribing(true);
+        try {
+          const formData = new FormData();
+          formData.append("audio", blob, "recording.webm");
+          const res = await api.post("/notes/transcribe", formData, { headers: { "Content-Type": "multipart/form-data" } });
+          setForm((f) => ({ ...f, content: f.content ? f.content + "\n" + res.data.text : res.data.text }));
+          toast.success("Transkrypcja gotowa");
+        } catch (err: any) {
+          toast.error(err.response?.data?.error ?? "Błąd transkrypcji");
+        } finally { setTranscribing(false); }
+      };
+      mediaRecorder.start();
+      mediaRecorderRef.current = mediaRecorder;
+      setRecording(true);
+    } catch {
+      toast.error("Brak dostępu do mikrofonu");
+    }
+  }
+
+  function stopRecording() {
+    mediaRecorderRef.current?.stop();
+    setRecording(false);
+  }
 
   const { data, mutate } = useSWR(`/notes?clientId=${id}&year=${year}&month=${month}`, fetcher);
 
@@ -165,7 +204,18 @@ export default function NotesPage() {
                   placeholder="Np. Optymalizacja meta tagów" />
               </div>
               <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1.5">Opis</label>
+                <div className="flex items-center justify-between mb-1.5">
+                  <label className="block text-sm font-medium text-gray-700">Opis</label>
+                  <button type="button"
+                    onClick={recording ? stopRecording : startRecording}
+                    disabled={transcribing}
+                    title={recording ? "Zatrzymaj nagrywanie" : "Dyktuj notatkę głosową"}
+                    className={`flex items-center gap-1.5 px-2.5 py-1 rounded-lg text-xs font-medium transition-colors disabled:opacity-50 ${recording ? "bg-red-50 text-red-600 hover:bg-red-100" : "bg-gray-100 text-gray-600 hover:bg-gray-200"}`}>
+                    {transcribing ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : recording ? <MicOff className="w-3.5 h-3.5" /> : <Mic className="w-3.5 h-3.5" />}
+                    {transcribing ? "Transkrybuję..." : recording ? "Zatrzymaj" : "Dyktuj"}
+                    {recording && <span className="w-1.5 h-1.5 rounded-full bg-red-500 animate-pulse" />}
+                  </button>
+                </div>
                 <textarea value={form.content} onChange={(e) => setForm(f => ({ ...f, content: e.target.value }))}
                   rows={3} className="w-full px-3.5 py-2.5 border border-gray-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500 resize-none"
                   placeholder="Opis wykonanej pracy..." />

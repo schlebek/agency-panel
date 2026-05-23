@@ -1,4 +1,4 @@
-import { pgTable, uuid, text, timestamp, boolean, jsonb } from "drizzle-orm/pg-core";
+import { pgTable, uuid, text, timestamp, boolean, jsonb, integer } from "drizzle-orm/pg-core";
 import { tenants } from "./tenants";
 
 export const clients = pgTable("clients", {
@@ -25,6 +25,12 @@ export const clients = pgTable("clients", {
   gscCredentials: jsonb("gsc_credentials"),
   // Google Ads
   googleAdsCustomerId: text("google_ads_customer_id"),
+  adsNotes: text("ads_notes"),
+  // KPI Goals { top3Target, top10Target, clicksTarget }
+  goals: jsonb("goals").$type<Record<string, number>>().default({}),
+  // Uptime monitoring
+  uptimeEnabled: boolean("uptime_enabled").default(false).notNull(),
+  uptimeStatus: text("uptime_status").$type<"up" | "down" | "unknown">().default("unknown"),
   createdAt: timestamp("created_at").defaultNow().notNull(),
   updatedAt: timestamp("updated_at").defaultNow().notNull(),
 });

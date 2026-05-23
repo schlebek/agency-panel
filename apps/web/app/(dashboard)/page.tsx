@@ -5,7 +5,7 @@ import {
   Users, TrendingUp, Search, ArrowRight, Plus, FileText,
   ShoppingCart, Cpu, HeartPulse, Banknote, Building2, UtensilsCrossed,
   GraduationCap, Scale, Sparkles, Car, Plane, Dumbbell, Zap, Briefcase,
-  CheckSquare, BookOpen,
+  CheckSquare, BookOpen, AlertTriangle, WifiOff, CheckCircle2,
 } from "lucide-react";
 import { api } from "@/lib/api";
 import { useAuthStore } from "@/lib/auth-store";
@@ -72,6 +72,46 @@ export default function DashboardPage() {
           </Link>
         ))}
       </div>
+
+      {/* Uwaga wymagana */}
+      {(() => {
+        if (!clients) return null;
+        const downClients = clients.filter((c: any) => c.uptimeStatus === "down" && c.uptimeEnabled);
+        const noIntegration = clients.filter((c: any) => !c.senutoProjectId && !c.gscPropertyUrl);
+        const items = [
+          ...downClients.map((c: any) => ({ id: c.id, name: c.name, type: "down" as const, detail: "Strona niedostępna" })),
+          ...noIntegration.slice(0, 3).map((c: any) => ({ id: c.id, name: c.name, type: "noIntegration" as const, detail: "Brak integracji SEO" })),
+        ];
+        if (items.length === 0) return (
+          <div className="mb-6 flex items-center gap-2 px-4 py-3 bg-green-50 border border-green-100 rounded-2xl text-sm text-green-700">
+            <CheckCircle2 className="w-4 h-4 flex-shrink-0" />
+            Wszystko w porządku — brak alertów
+          </div>
+        );
+        return (
+          <div className="mb-6 bg-white rounded-2xl border border-amber-200 overflow-hidden">
+            <div className="px-5 py-3 bg-amber-50 border-b border-amber-100 flex items-center gap-2">
+              <AlertTriangle className="w-4 h-4 text-amber-500" />
+              <span className="text-sm font-semibold text-amber-800">Uwaga wymagana ({items.length})</span>
+            </div>
+            <div className="divide-y divide-gray-50">
+              {items.map((item) => (
+                <Link key={`${item.id}-${item.type}`} href={item.type === "down" ? `/clients/${item.id}/uptime` : `/clients/${item.id}`}
+                  className="flex items-center gap-3 px-5 py-3.5 hover:bg-gray-50 transition-colors group">
+                  <div className={`w-8 h-8 rounded-xl flex items-center justify-center flex-shrink-0 ${item.type === "down" ? "bg-red-100" : "bg-amber-50"}`}>
+                    {item.type === "down" ? <WifiOff className="w-3.5 h-3.5 text-red-500" /> : <AlertTriangle className="w-3.5 h-3.5 text-amber-500" />}
+                  </div>
+                  <div className="flex-1 min-w-0">
+                    <p className="text-sm font-medium text-gray-900">{item.name}</p>
+                    <p className="text-xs text-gray-400">{item.detail}</p>
+                  </div>
+                  <ArrowRight className="w-3.5 h-3.5 text-gray-300 group-hover:text-indigo-400 transition-colors flex-shrink-0" />
+                </Link>
+              ))}
+            </div>
+          </div>
+        );
+      })()}
 
       {/* Quick actions */}
       <div className="mb-6 sm:mb-8">

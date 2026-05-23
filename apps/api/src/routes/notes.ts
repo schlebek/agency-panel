@@ -88,4 +88,45 @@ app.delete("/:id", requireOwnerOrAdmin, async (c) => {
   return c.json({ success: true });
 });
 
+// POST /notes/transcribe — accepts audio file, returns transcription via Gemini
+app.post("/transcribe", async (c) => {
+  const tenant = c.get("tenant");
+  const apiKey = process.env.GEMINI_API_KEY;
+  if (!apiKey) return c.json({ error: "Gemini API nie jest skonfigurowane" }, 503);
+
+  const formData = await c.req.formData();
+  const file = formData.get("audio") as File | null;
+  if (!file) return c.json({ error: "Brak pliku audio" }, 400);
+
+  const maxSize = 10 * 1024 * 1024;
+  if (file.size > maxSize) return c.json({ error: "Plik zbyt duży (max 10MB)" }, 400);
+
+  const allowedTypes = ["audio/webm", "audio/ogg", "audio/mpeg", "audio/mp4", "audio/wav"];
+  if (!allowedTypes.includes(file.type)) return c.json({ error: "Nieobsługiwany format audio" }, 400);
+
+  const buffer = await file.arrayBuffer();
+  const base64 = Buffer.from(buffer).toString("base64");
+
+  const res = await fetch(
+    `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent?key=${apiKey}`,
+    {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        contents: [{
+          parts: [
+            { inlineData: { mimeType: file.type, data: base64 } },
+            { text: "Transkrybuj dokładnie to nagranie audio. Zwróć tylko sam tekst transkrypcji, bez dodatkowych komentarzy." },
+          ],
+        }],
+      }),
+    }
+  );
+
+  if (!res.ok) return c.json({ error: "Błąd Gemini API" }, 502);
+  const json: any = await res.json();
+  const text = json.candidates?.[0]?.content?.parts?.[0]?.text?.trim() ?? "";
+  return c.json({ text });
+});
+
 export default app;

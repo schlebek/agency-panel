@@ -1,8 +1,8 @@
 import { Hono } from "hono";
 import { zValidator } from "@hono/zod-validator";
 import { z } from "zod";
-import { db, clientAccounts, clientSessions, clients } from "@agency/db";
-import { eq, and } from "drizzle-orm";
+import { db, clientAccounts, clientSessions, clients, clientComments } from "@agency/db";
+import { eq, and, desc } from "drizzle-orm";
 import { hashPassword, verifyPassword } from "../lib/auth";
 import jwt from "jsonwebtoken";
 import { addDays } from "date-fns";
@@ -250,6 +250,32 @@ app.get("/gsc-data", requireClientAuth, async (c) => {
     queries: queries.map((q) => ({ query: q.query, clicks: q.clicks, impressions: q.impressions, ctr: parseFloat(q.ctr ?? "0"), avgPosition: parseFloat(q.avgPosition ?? "0") })),
     pages: pages.map((p) => ({ page: p.page, clicks: p.clicks, impressions: p.impressions, ctr: parseFloat(p.ctr ?? "0"), avgPosition: parseFloat(p.avgPosition ?? "0") })),
   });
+});
+
+// Comments via portal
+app.get("/comments", requireClientAuth, async (c) => {
+  const account = c.get("clientAccount");
+  const comments = await db.select().from(clientComments)
+    .where(and(eq(clientComments.clientId, account.clientId), eq(clientComments.tenantId, account.tenantId)))
+    .orderBy(desc(clientComments.createdAt))
+    .limit(50);
+  return c.json(comments);
+});
+
+app.post("/comments", requireClientAuth, zValidator("json", z.object({
+  content: z.string().min(1).max(2000),
+})), async (c) => {
+  const account = c.get("clientAccount");
+  const { content } = c.req.valid("json");
+  const [comment] = await db.insert(clientComments).values({
+    tenantId: account.tenantId,
+    clientId: account.clientId,
+    authorType: "client",
+    authorId: account.id,
+    authorName: account.name,
+    content,
+  }).returning();
+  return c.json(comment, 201);
 });
 
 export { requireClientAuth };

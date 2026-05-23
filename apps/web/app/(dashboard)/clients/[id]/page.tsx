@@ -8,7 +8,8 @@ import {
   CheckSquare, BookOpen, ShoppingCart, Briefcase, Cpu, HeartPulse,
   Banknote, Building2, UtensilsCrossed, GraduationCap, Scale, Sparkles,
   Car, Plane, Dumbbell, Zap, UserPlus, Trash2, Eye, EyeOff, RefreshCw,
-  ExternalLink, Users, KeyRound, ToggleLeft, ToggleRight,
+  ExternalLink, Users, KeyRound, ToggleLeft, ToggleRight, BrainCircuit,
+  Activity, ClipboardList, Target, BarChart2, MessageCircle, Send,
 } from "lucide-react";
 import { toast } from "sonner";
 import { api } from "@/lib/api";
@@ -18,11 +19,19 @@ const fetcher = (url: string) => api.get(url).then((r) => r.data);
 const PORTAL_TABS = [
   { key: "seo", label: "SEO (Senuto)", icon: TrendingUp },
   { key: "gsc", label: "Google Search Console", icon: Search },
+  { key: "ai-monitor", label: "AI Monitor", icon: BrainCircuit },
   { key: "links", label: "Linki", icon: Link2 },
   { key: "notes", label: "Prace", icon: FileEdit },
   { key: "optimization", label: "Optymalizacja", icon: CheckSquare },
   { key: "blog", label: "Blog", icon: BookOpen },
   { key: "reports", label: "Raporty", icon: FileText },
+];
+
+const AGENCY_TABS = [
+  { key: "ads", label: "Google Ads", icon: BarChart2 },
+  { key: "goals", label: "Cele KPI", icon: Target },
+  { key: "uptime", label: "Monitoring", icon: Activity },
+  { key: "audit", label: "Dziennik zmian", icon: ClipboardList },
 ];
 
 const INDUSTRIES = [
@@ -418,6 +427,71 @@ function ClientAccountsPanel({ clientId }: { clientId: string }) {
   );
 }
 
+// ─── Comments panel ──────────────────────────────────────────────────────────
+
+function CommentsPanel({ clientId }: { clientId: string }) {
+  const { data: comments, mutate } = useSWR(`/clients/${clientId}/comments`, fetcher);
+  const [text, setText] = useState("");
+  const [sending, setSending] = useState(false);
+
+  async function send() {
+    if (!text.trim()) return;
+    setSending(true);
+    try {
+      await api.post(`/clients/${clientId}/comments`, { content: text.trim() });
+      setText("");
+      mutate();
+    } catch { toast.error("Błąd wysyłania"); }
+    finally { setSending(false); }
+  }
+
+  return (
+    <div className="bg-white rounded-2xl border border-gray-100 p-5">
+      <div className="flex items-center gap-2 mb-4">
+        <MessageCircle className="w-4 h-4 text-gray-400" />
+        <h2 className="font-semibold text-gray-900 text-sm">Wiadomości z klientem</h2>
+      </div>
+
+      {/* Message list */}
+      <div className="space-y-3 max-h-60 overflow-y-auto mb-3">
+        {!comments ? (
+          <div className="h-10 flex items-center justify-center">
+            <div className="w-4 h-4 border-2 border-indigo-600 border-t-transparent rounded-full animate-spin" />
+          </div>
+        ) : comments.length === 0 ? (
+          <p className="text-xs text-gray-400 text-center py-4">Brak wiadomości</p>
+        ) : comments.map((c: any) => (
+          <div key={c.id} className={`flex gap-2 ${c.authorType === "agency" ? "flex-row-reverse" : ""}`}>
+            <div className="w-6 h-6 rounded-full bg-indigo-100 flex items-center justify-center flex-shrink-0">
+              <span className="text-[10px] font-bold text-indigo-700">{c.authorName?.[0]?.toUpperCase()}</span>
+            </div>
+            <div className={`max-w-[80%] ${c.authorType === "agency" ? "items-end" : ""} flex flex-col`}>
+              <div className={`px-3 py-2 rounded-2xl text-xs ${c.authorType === "agency" ? "bg-indigo-600 text-white rounded-tr-sm" : "bg-gray-100 text-gray-800 rounded-tl-sm"}`}>
+                {c.content}
+              </div>
+              <p className="text-[10px] text-gray-400 mt-0.5 px-1">{c.authorName} · {new Date(c.createdAt).toLocaleDateString("pl-PL")}</p>
+            </div>
+          </div>
+        ))}
+      </div>
+
+      {/* Input */}
+      <div className="flex gap-2">
+        <input
+          value={text} onChange={(e) => setText(e.target.value)}
+          onKeyDown={(e) => { if (e.key === "Enter" && !e.shiftKey) { e.preventDefault(); send(); } }}
+          placeholder="Wpisz wiadomość..."
+          className="flex-1 px-3 py-2 border border-gray-200 rounded-xl text-xs focus:outline-none focus:ring-2 focus:ring-indigo-500"
+        />
+        <button onClick={send} disabled={!text.trim() || sending}
+          className="p-2 bg-indigo-600 text-white rounded-xl hover:bg-indigo-700 disabled:opacity-50 transition-colors">
+          <Send className="w-3.5 h-3.5" />
+        </button>
+      </div>
+    </div>
+  );
+}
+
 // ─── Main page ────────────────────────────────────────────────────────────────
 
 export default function ClientPage() {
@@ -489,16 +563,34 @@ export default function ClientPage() {
       <div className="grid grid-cols-1 xl:grid-cols-3 gap-4 xl:gap-6">
         {/* Left: tabs */}
         <div className="xl:col-span-2 space-y-3">
-          <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-3">
-            {PORTAL_TABS.map((tab) => (
-              <Link key={tab.key} href={`/clients/${id}/${tab.key}`}
-                className="bg-white rounded-2xl border border-gray-100 p-4 sm:p-5 hover:border-indigo-200 hover:shadow-sm transition-all group">
-                <div className="w-9 h-9 bg-indigo-50 group-hover:bg-indigo-100 rounded-xl flex items-center justify-center mb-3 transition-colors">
-                  <tab.icon className="w-4.5 h-4.5 text-indigo-600" />
-                </div>
-                <p className="text-xs sm:text-sm font-medium text-gray-700 group-hover:text-indigo-600 transition-colors leading-tight">{tab.label}</p>
-              </Link>
-            ))}
+          <div>
+            <p className="text-xs font-semibold text-gray-400 uppercase tracking-wider mb-2">Panel klienta</p>
+            <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-3">
+              {PORTAL_TABS.map((tab) => (
+                <Link key={tab.key} href={`/clients/${id}/${tab.key}`}
+                  className="bg-white rounded-2xl border border-gray-100 p-4 sm:p-5 hover:border-indigo-200 hover:shadow-sm transition-all group">
+                  <div className="w-9 h-9 bg-indigo-50 group-hover:bg-indigo-100 rounded-xl flex items-center justify-center mb-3 transition-colors">
+                    <tab.icon className="w-4 h-4 text-indigo-600" />
+                  </div>
+                  <p className="text-xs sm:text-sm font-medium text-gray-700 group-hover:text-indigo-600 transition-colors leading-tight">{tab.label}</p>
+                </Link>
+              ))}
+            </div>
+          </div>
+
+          <div>
+            <p className="text-xs font-semibold text-gray-400 uppercase tracking-wider mb-2 mt-2">Narzędzia agencji</p>
+            <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
+              {AGENCY_TABS.map((tab) => (
+                <Link key={tab.key} href={`/clients/${id}/${tab.key}`}
+                  className="bg-white rounded-2xl border border-gray-100 p-4 sm:p-5 hover:border-violet-200 hover:shadow-sm transition-all group">
+                  <div className="w-9 h-9 bg-violet-50 group-hover:bg-violet-100 rounded-xl flex items-center justify-center mb-3 transition-colors">
+                    <tab.icon className="w-4 h-4 text-violet-600" />
+                  </div>
+                  <p className="text-xs sm:text-sm font-medium text-gray-700 group-hover:text-violet-600 transition-colors leading-tight">{tab.label}</p>
+                </Link>
+              ))}
+            </div>
           </div>
 
           {/* Details */}
@@ -578,6 +670,9 @@ export default function ClientPage() {
             </div>
             <ClientAccountsPanel clientId={id} />
           </div>
+
+          {/* Comments panel */}
+          <CommentsPanel clientId={id} />
         </div>
       </div>
 

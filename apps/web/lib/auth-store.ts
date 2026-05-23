@@ -17,6 +17,9 @@ interface Tenant {
   slug: string;
   plan: string;
   trialEndsAt?: string | null;
+  logoUrl?: string | null;
+  faviconUrl?: string | null;
+  brandColor?: string | null;
 }
 
 interface AuthState {

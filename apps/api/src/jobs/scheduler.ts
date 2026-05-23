@@ -1,6 +1,6 @@
 import { db, clients } from "@agency/db";
 import { eq } from "drizzle-orm";
-import { scheduleSenutoSync, scheduleGscSync } from "../lib/queue";
+import { scheduleSenutoSync, scheduleGscSync, scheduleUptimeCheck } from "../lib/queue";
 
 async function scheduleAllDailySyncs() {
   try {
@@ -11,6 +11,7 @@ async function scheduleAllDailySyncs() {
         senutoProjectId: clients.senutoProjectId,
         gscPropertyUrl: clients.gscPropertyUrl,
         gscCredentials: clients.gscCredentials,
+        uptimeEnabled: clients.uptimeEnabled,
       })
       .from(clients)
       .where(eq(clients.isActive, true));
@@ -29,7 +30,15 @@ async function scheduleAllDailySyncs() {
       }
     }
 
-    console.log(`[scheduler] Daily sync: ${senutoCount} Senuto, ${gscCount} GSC clients queued`);
+    let uptimeCount = 0;
+    for (const client of activeClients) {
+      if (client.uptimeEnabled) {
+        await scheduleUptimeCheck(client.id);
+        uptimeCount++;
+      }
+    }
+
+    console.log(`[scheduler] Daily sync: ${senutoCount} Senuto, ${gscCount} GSC, ${uptimeCount} uptime clients queued`);
   } catch (err) {
     console.error("[scheduler] Error scheduling daily syncs:", err);
   }

@@ -82,6 +82,39 @@ export async function getGscData(credentials: {
   };
 }
 
+export async function getGscQueriesExtended(credentials: {
+  access_token: string;
+  refresh_token: string;
+  expiry_date?: number;
+}, propertyUrl: string, daysBack = 90) {
+  const auth = new google.auth.OAuth2(
+    process.env.GOOGLE_CLIENT_ID,
+    process.env.GOOGLE_CLIENT_SECRET
+  );
+  auth.setCredentials(credentials);
+
+  const searchConsole = google.searchconsole({ version: "v1", auth });
+  const dateTo = format(new Date(), "yyyy-MM-dd");
+  const dateFrom = format(subDays(new Date(), daysBack), "yyyy-MM-dd");
+
+  const { data } = await searchConsole.searchanalytics.query({
+    siteUrl: propertyUrl,
+    requestBody: {
+      startDate: dateFrom,
+      endDate: dateTo,
+      dimensions: ["query"],
+      rowLimit: 1000,
+      orderBy: [{ fieldName: "impressions", sortOrder: "DESCENDING" }],
+    },
+  });
+
+  return {
+    rows: data.rows ?? [],
+    dateFrom,
+    dateTo,
+  };
+}
+
 export async function getGscDailyData(credentials: any, propertyUrl: string, daysBack = 90) {
   const auth = new google.auth.OAuth2(
     process.env.GOOGLE_CLIENT_ID,

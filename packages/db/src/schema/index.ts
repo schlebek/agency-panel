@@ -5,3 +5,7 @@ export * from "./seo-data";
 export * from "./reports";
 export * from "./content";
 export * from "./client-accounts";
+export * from "./audit";
+export * from "./monitoring";
+export * from "./comments";
+export * from "./webhooks";

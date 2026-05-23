@@ -39,6 +39,7 @@ export default function ReportsPage() {
     month: NOW.getMonth() + 1,
     notes: "",
     recipientEmail: "",
+    templateType: "full" as "full" | "summary" | "branded",
   });
 
   const { data: reports, mutate } = useSWR(`/reports?clientId=${id}`, fetcher);
@@ -53,6 +54,7 @@ export default function ReportsPage() {
         month: form.month,
         notes: form.notes || undefined,
         recipientEmail: form.recipientEmail || undefined,
+        templateType: form.templateType,
       });
       toast.success("Raport w trakcie generowania — zajmie to chwilę");
       setShowForm(false);
@@ -208,6 +210,23 @@ export default function ReportsPage() {
                 <input type="email" value={form.recipientEmail} onChange={(e) => setForm(f => ({ ...f, recipientEmail: e.target.value }))}
                   className="w-full px-3.5 py-2.5 border border-gray-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500"
                   placeholder="klient@example.com" />
+              </div>
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1.5">Szablon raportu</label>
+                <div className="grid grid-cols-3 gap-2">
+                  {[
+                    { value: "full", label: "Pełny", desc: "Wszystkie sekcje" },
+                    { value: "summary", label: "Skrócony", desc: "Tylko KPI" },
+                    { value: "branded", label: "Brandowany", desc: "Z logo agencji" },
+                  ].map((opt) => (
+                    <button key={opt.value} type="button"
+                      onClick={() => setForm((f) => ({ ...f, templateType: opt.value as any }))}
+                      className={`p-2.5 border rounded-xl text-left transition-colors ${form.templateType === opt.value ? "border-indigo-500 bg-indigo-50" : "border-gray-200 hover:border-gray-300"}`}>
+                      <p className={`text-xs font-medium ${form.templateType === opt.value ? "text-indigo-700" : "text-gray-700"}`}>{opt.label}</p>
+                      <p className="text-xs text-gray-400 mt-0.5">{opt.desc}</p>
+                    </button>
+                  ))}
+                </div>
               </div>
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-1.5">Komentarz do raportu</label>

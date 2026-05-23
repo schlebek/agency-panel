@@ -3,7 +3,7 @@ import { useEffect, useState } from "react";
 import { useRouter, usePathname } from "next/navigation";
 import Link from "next/link";
 import {
-  LayoutDashboard, Users, FileText, Settings, LogOut, TrendingUp, Menu, X, UserCircle, ChevronRight,
+  LayoutDashboard, Users, FileText, Settings, LogOut, TrendingUp, Menu, X, UserCircle, ChevronRight, UsersRound,
 } from "lucide-react";
 import { useAuthStore } from "@/lib/auth-store";
 import { cn } from "@/lib/utils";
@@ -12,6 +12,7 @@ const navigation = [
   { name: "Dashboard", href: "/", icon: LayoutDashboard },
   { name: "Klienci", href: "/clients", icon: Users },
   { name: "Raporty", href: "/reports", icon: FileText },
+  { name: "Zespół", href: "/team", icon: UsersRound },
   { name: "Ustawienia", href: "/settings", icon: Settings },
 ];
 
@@ -30,9 +31,17 @@ function Sidebar({ onClose }: { onClose?: () => void }) {
       {/* Logo */}
       <div className="p-5 border-b border-gray-100 flex items-center justify-between">
         <div className="flex items-center gap-3">
-          <div className="w-9 h-9 bg-indigo-600 rounded-xl flex items-center justify-center flex-shrink-0">
-            <TrendingUp className="w-5 h-5 text-white" />
-          </div>
+          {tenant?.logoUrl ? (
+            <img
+              src={tenant.logoUrl}
+              alt={tenant.name}
+              className="w-9 h-9 rounded-xl object-contain flex-shrink-0 bg-gray-50 border border-gray-100"
+            />
+          ) : (
+            <div className="w-9 h-9 bg-indigo-600 rounded-xl flex items-center justify-center flex-shrink-0">
+              <TrendingUp className="w-5 h-5 text-white" />
+            </div>
+          )}
           <div className="min-w-0">
             <p className="font-semibold text-gray-900 text-sm leading-tight truncate">{tenant?.name ?? "Agency Panel"}</p>
             <p className="text-xs text-gray-400 capitalize">{tenant?.plan ?? "trial"}</p>
@@ -110,6 +119,26 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
     if (!user) fetchMe().catch(() => router.push("/login"));
   }, [token]);
 
+  // Dynamiczna favicon i kolor marki po zalogowaniu
+  useEffect(() => {
+    if (!user) return;
+    const tenant = useAuthStore.getState().tenant;
+
+    if (tenant?.faviconUrl) {
+      let link = document.querySelector<HTMLLinkElement>("link[rel~='icon']");
+      if (!link) {
+        link = document.createElement("link");
+        link.rel = "icon";
+        document.head.appendChild(link);
+      }
+      link.href = tenant.faviconUrl;
+    }
+
+    if (tenant?.brandColor) {
+      document.documentElement.style.setProperty("--brand", tenant.brandColor);
+    }
+  }, [user]);
+
   // Close sidebar on route change (mobile)
   const pathname = usePathname();
   useEffect(() => { setSidebarOpen(false); }, [pathname]);
@@ -153,9 +182,17 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
             <Menu className="w-5 h-5" />
           </button>
           <div className="flex items-center gap-2">
-            <div className="w-7 h-7 bg-indigo-600 rounded-lg flex items-center justify-center">
-              <TrendingUp className="w-4 h-4 text-white" />
-            </div>
+            {useAuthStore.getState().tenant?.logoUrl ? (
+              <img
+                src={useAuthStore.getState().tenant!.logoUrl!}
+                alt=""
+                className="w-7 h-7 rounded-lg object-contain bg-gray-50 border border-gray-100"
+              />
+            ) : (
+              <div className="w-7 h-7 bg-indigo-600 rounded-lg flex items-center justify-center">
+                <TrendingUp className="w-4 h-4 text-white" />
+              </div>
+            )}
             <span className="font-semibold text-gray-900 text-sm">{useAuthStore.getState().tenant?.name ?? "Agency Panel"}</span>
           </div>
         </div>

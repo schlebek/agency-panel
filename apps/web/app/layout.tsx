@@ -8,6 +8,9 @@ const inter = Inter({ subsets: ["latin"] });
 export const metadata: Metadata = {
   title: "Agency Panel",
   description: "Panel klienta agencji marketingowej",
+  icons: {
+    icon: "/api/public/favicon",
+  },
 };
 
 export default function RootLayout({ children }: { children: React.ReactNode }) {

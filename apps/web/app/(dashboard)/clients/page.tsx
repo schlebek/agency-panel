@@ -5,8 +5,10 @@ import Link from "next/link";
 import {
   Plus, Search, ArrowRight, Globe, TrendingUp, ShoppingCart, Briefcase,
   Cpu, HeartPulse, Banknote, Building2, UtensilsCrossed, GraduationCap,
-  Scale, Sparkles, Car, Plane, Dumbbell, Zap,
+  Scale, Sparkles, Car, Plane, Dumbbell, Zap, Upload, X, FileUp,
 } from "lucide-react";
+import { useRef } from "react";
+import { toast } from "sonner";
 import { api } from "@/lib/api";
 import AddClientModal from "@/components/clients/AddClientModal";
 
@@ -24,6 +26,28 @@ export default function ClientsPage() {
   const { data: clients, mutate } = useSWR("/clients", fetcher);
   const [search, setSearch] = useState("");
   const [showAdd, setShowAdd] = useState(false);
+  const [importing, setImporting] = useState(false);
+  const fileInputRef = useRef<HTMLInputElement>(null);
+
+  async function handleCsvImport(e: React.ChangeEvent<HTMLInputElement>) {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    setImporting(true);
+    try {
+      const form = new FormData();
+      form.append("file", file);
+      const res = await api.post("/imports/clients/import", form, { headers: { "Content-Type": "multipart/form-data" } });
+      const { created, skipped, errors } = res.data;
+      toast.success(`Zaimportowano ${created} klientów${skipped > 0 ? `, pominięto ${skipped}` : ""}`);
+      if (errors?.length) toast.error(`Błędy (${errors.length}): ${errors[0]}`);
+      mutate();
+    } catch (err: any) {
+      toast.error(err.response?.data?.error ?? "Błąd importu");
+    } finally {
+      setImporting(false);
+      if (fileInputRef.current) fileInputRef.current.value = "";
+    }
+  }
 
   const filtered = clients?.filter((c: any) =>
     c.name.toLowerCase().includes(search.toLowerCase()) ||
@@ -38,14 +62,23 @@ export default function ClientsPage() {
           <h1 className="text-xl sm:text-2xl font-bold text-gray-900">Klienci</h1>
           <p className="text-gray-500 text-sm mt-0.5">{clients?.length ?? 0} klientów łącznie</p>
         </div>
-        <button
-          onClick={() => setShowAdd(true)}
-          className="flex items-center gap-2 px-3.5 sm:px-4 py-2.5 bg-indigo-600 text-white text-sm font-medium rounded-xl hover:bg-indigo-700 transition-colors"
-        >
-          <Plus className="w-4 h-4" />
-          <span className="hidden sm:inline">Dodaj klienta</span>
-          <span className="sm:hidden">Dodaj</span>
-        </button>
+        <div className="flex items-center gap-2">
+          <input ref={fileInputRef} type="file" accept=".csv" className="hidden" onChange={handleCsvImport} />
+          <button onClick={() => fileInputRef.current?.click()} disabled={importing}
+            title="Importuj klientów z CSV (wymagane kolumny: name, domain)"
+            className="flex items-center gap-2 px-3 py-2.5 border border-gray-200 text-gray-600 text-sm font-medium rounded-xl hover:bg-gray-50 transition-colors disabled:opacity-50">
+            {importing ? <Upload className="w-4 h-4 animate-bounce" /> : <FileUp className="w-4 h-4" />}
+            <span className="hidden sm:inline">{importing ? "Importuję..." : "Import CSV"}</span>
+          </button>
+          <button
+            onClick={() => setShowAdd(true)}
+            className="flex items-center gap-2 px-3.5 sm:px-4 py-2.5 bg-indigo-600 text-white text-sm font-medium rounded-xl hover:bg-indigo-700 transition-colors"
+          >
+            <Plus className="w-4 h-4" />
+            <span className="hidden sm:inline">Dodaj klienta</span>
+            <span className="sm:hidden">Dodaj</span>
+          </button>
+        </div>
       </div>
 
       {/* Search */}

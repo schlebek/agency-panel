@@ -1,9 +1,10 @@
 import { Hono } from "hono";
 import { zValidator } from "@hono/zod-validator";
 import { z } from "zod";
-import { db, users, tenants, sessions } from "@agency/db";
-import { eq } from "drizzle-orm";
+import { db, users, tenants, sessions, invitations } from "@agency/db";
+import { eq, and } from "drizzle-orm";
 import { hashPassword, verifyPassword, createSession, getUserFromToken } from "../lib/auth";
+import { getPresignedUrl } from "../lib/storage";
 import { requireAuth } from "../middleware/auth";
 import { addDays } from "date-fns";
 import crypto from "crypto";
@@ -20,6 +21,41 @@ const registerSchema = z.object({
 const loginSchema = z.object({
   email: z.string().email(),
   password: z.string(),
+});
+
+app.get("/setup-status", async (c) => {
+  const [existing] = await db.select({ id: tenants.id }).from(tenants).limit(1);
+  return c.json({ needed: !existing });
+});
+
+app.post("/setup", zValidator("json", registerSchema), async (c) => {
+  const [existing] = await db.select({ id: tenants.id }).from(tenants).limit(1);
+  if (existing) {
+    return c.json({ error: "Setup already completed" }, 409);
+  }
+
+  const { agencyName, name, email, password } = c.req.valid("json");
+  const slug = agencyName.toLowerCase().replace(/[^a-z0-9]/g, "-").replace(/-+/g, "-");
+  const passwordHash = await hashPassword(password);
+
+  const [tenant] = await db.insert(tenants).values({
+    name: agencyName,
+    slug: `${slug}-${crypto.randomBytes(3).toString("hex")}`,
+    plan: "enterprise",
+    trialEndsAt: null,
+  }).returning();
+
+  const [user] = await db.insert(users).values({
+    tenantId: tenant.id,
+    email,
+    name,
+    passwordHash,
+    role: "owner",
+  }).returning({ id: users.id, email: users.email, name: users.name, role: users.role, tenantId: users.tenantId });
+
+  const token = await createSession(user.id, tenant.id);
+
+  return c.json({ user, tenant, token }, 201);
 });
 
 app.post("/register", zValidator("json", registerSchema), async (c) => {
@@ -90,7 +126,8 @@ app.post("/logout", requireAuth, async (c) => {
 app.get("/me", requireAuth, async (c) => {
   const user = c.get("user");
   const tenant = c.get("tenant");
-  return c.json({ user, tenant });
+  const logoUrl = tenant.logoKey ? await getPresignedUrl(tenant.logoKey, 86400) : null;
+  return c.json({ user, tenant: { ...tenant, logoUrl } });
 });
 
 app.patch("/me", requireAuth, zValidator("json", z.object({
@@ -129,6 +166,57 @@ app.patch("/me", requireAuth, zValidator("json", z.object({
     .returning({ id: users.id, email: users.email, name: users.name, role: users.role, tenantId: users.tenantId });
 
   return c.json({ user: updated });
+});
+
+// GET /auth/invite/:token — returns invite info (email, agency name) without consuming the invite
+app.get("/invite/:token", async (c) => {
+  const { token } = c.req.param();
+  const [inv] = await db.select({
+    id: invitations.id,
+    email: invitations.email,
+    role: invitations.role,
+    expiresAt: invitations.expiresAt,
+    tenantId: invitations.tenantId,
+  }).from(invitations).where(and(eq(invitations.token, token), eq(invitations.acceptedAt, null as any))).limit(1);
+
+  if (!inv) return c.json({ error: "Zaproszenie jest nieważne lub wygasło" }, 404);
+  if (inv.expiresAt < new Date()) return c.json({ error: "Zaproszenie wygasło" }, 410);
+
+  const [tenant] = await db.select({ name: tenants.name }).from(tenants).where(eq(tenants.id, inv.tenantId)).limit(1);
+  return c.json({ email: inv.email, role: inv.role, agencyName: tenant?.name });
+});
+
+// POST /auth/accept-invite — creates user account from invitation
+app.post("/accept-invite", zValidator("json", z.object({
+  token: z.string(),
+  name: z.string().min(2).max(100),
+  password: z.string().min(8),
+})), async (c) => {
+  const { token, name, password } = c.req.valid("json");
+
+  const [inv] = await db.select().from(invitations)
+    .where(and(eq(invitations.token, token), eq(invitations.acceptedAt, null as any))).limit(1);
+
+  if (!inv) return c.json({ error: "Zaproszenie jest nieważne lub wygasło" }, 404);
+  if (inv.expiresAt < new Date()) return c.json({ error: "Zaproszenie wygasło" }, 410);
+
+  const [existing] = await db.select({ id: users.id }).from(users).where(eq(users.email, inv.email)).limit(1);
+  if (existing) return c.json({ error: "Konto z tym emailem już istnieje" }, 409);
+
+  const passwordHash = await hashPassword(password);
+  const [user] = await db.insert(users).values({
+    tenantId: inv.tenantId,
+    email: inv.email,
+    name,
+    passwordHash,
+    role: inv.role,
+    emailVerified: true,
+  }).returning({ id: users.id, email: users.email, name: users.name, role: users.role, tenantId: users.tenantId });
+
+  await db.update(invitations).set({ acceptedAt: new Date() }).where(eq(invitations.id, inv.id));
+
+  const sessionToken = await createSession(user.id, inv.tenantId);
+  return c.json({ user, token: sessionToken }, 201);
 });
 
 export default app;
