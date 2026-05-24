@@ -44,7 +44,6 @@ export const useAuthStore = create<AuthState>()(
       login: async (email, password) => {
         set({ isLoading: true });
         const { data } = await api.post("/auth/login", { email, password });
-        localStorage.setItem("agency_token", data.token);
         set({ user: data.user, tenant: null, token: data.token, isLoading: false });
         await get().fetchMe();
       },
@@ -58,7 +57,6 @@ export const useAuthStore = create<AuthState>()(
 
       logout: async () => {
         try { await api.post("/auth/logout"); } catch {}
-        localStorage.removeItem("agency_token");
         set({ user: null, tenant: null, token: null });
         window.location.href = "/login";
       },
