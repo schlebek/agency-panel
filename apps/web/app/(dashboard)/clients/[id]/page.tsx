@@ -28,7 +28,7 @@ const PORTAL_TABS = [
 ];
 
 const AGENCY_TABS = [
-  { key: "ads", label: "Google Ads", icon: BarChart2 },
+  { key: "google-ads", label: "Google Ads", icon: BarChart2 },
   { key: "goals", label: "Cele KPI", icon: Target },
   { key: "uptime", label: "Monitoring", icon: Activity },
   { key: "audit", label: "Dziennik zmian", icon: ClipboardList },
