@@ -26,11 +26,12 @@ function PositionBadge({ change }: { change: number | null | undefined }) {
   );
 }
 
-function formatCpc(cpc: string | number | null | undefined): string {
-  if (cpc == null) return "—";
-  const n = Number(cpc);
+function formatPln(val: string | number | null | undefined): string {
+  if (val == null) return "—";
+  const n = Number(val);
   if (isNaN(n) || n === 0) return "—";
-  return `${n.toFixed(2)} zł`;
+  if (n >= 1000) return `${Math.round(n / 1000)} tys. zł`;
+  return `${n.toFixed(0)} zł`;
 }
 
 export default function SeoPage() {
@@ -66,8 +67,6 @@ export default function SeoPage() {
   const prev = visibility?.snapshots?.[visibility.snapshots.length - 2];
 
   const kwList: any[] = keywords?.keywords ?? [];
-  const hasCpc = kwList.some((k) => k.cpc != null && Number(k.cpc) > 0);
-  const hasTraffic = kwList.some((k) => k.estimatedTraffic != null);
   const competitors: any[] = competitorsData?.competitors ?? [];
 
   return (
@@ -85,12 +84,11 @@ export default function SeoPage() {
       </div>
 
       {/* Metric cards */}
-      <div className="grid grid-cols-4 gap-4 mb-6">
+      <div className="grid grid-cols-3 gap-4 mb-4">
         {[
           { label: "TOP 3", key: "top3", color: "indigo" },
           { label: "TOP 10", key: "top10", color: "blue" },
           { label: "TOP 50", key: "top50", color: "cyan" },
-          { label: "Wszystkie", key: "totalKeywords", color: "purple" },
         ].map(({ label, key, color }) => {
           const val = latest?.[key];
           const prevVal = prev?.[key];
@@ -110,6 +108,22 @@ export default function SeoPage() {
             </div>
           );
         })}
+      </div>
+
+      {/* Ads equivalent + visibility score */}
+      <div className="grid grid-cols-2 gap-4 mb-6">
+        <div className="bg-amber-50 border border-amber-100 rounded-2xl p-5">
+          <p className="text-xs font-semibold text-amber-600 uppercase tracking-wider mb-2">Ekwiwalent Google Ads</p>
+          <p className="text-3xl font-bold text-amber-700">{formatPln(latest?.adsEquivalent)}</p>
+          <p className="text-xs text-amber-500 mt-1.5">Szacowana wartość ruchu organicznego</p>
+        </div>
+        <div className="bg-green-50 border border-green-100 rounded-2xl p-5">
+          <p className="text-xs font-semibold text-green-600 uppercase tracking-wider mb-2">Indeks widoczności</p>
+          <p className="text-3xl font-bold text-green-700">
+            {latest?.visibilityScore ? formatNumber(Math.round(Number(latest.visibilityScore))) : "—"}
+          </p>
+          <p className="text-xs text-green-500 mt-1.5">Widoczność organiczna wg Senuto</p>
+        </div>
       </div>
 
       {/* Chart */}
@@ -139,8 +153,8 @@ export default function SeoPage() {
             <h3 className="font-semibold text-gray-900">Największe wzrosty</h3>
           </div>
           <div className="space-y-2">
-            {gainers?.gainers?.length > 0
-              ? gainers.gainers.slice(0, 10).map((kw: any) => (
+            {kwList.filter(k => (k.positionChange ?? 0) > 0).slice(0, 10).length > 0
+              ? kwList.filter(k => (k.positionChange ?? 0) > 0).sort((a, b) => (b.positionChange ?? 0) - (a.positionChange ?? 0)).slice(0, 10).map((kw: any) => (
                 <div key={kw.id} className="flex items-center justify-between py-1.5 border-b border-gray-50 last:border-0">
                   <div className="min-w-0 flex-1 pr-2">
                     <p className="text-sm font-medium text-gray-900 truncate">{kw.keyword}</p>
@@ -159,8 +173,8 @@ export default function SeoPage() {
             <h3 className="font-semibold text-gray-900">Największe spadki</h3>
           </div>
           <div className="space-y-2">
-            {losers?.losers?.length > 0
-              ? losers.losers.slice(0, 10).map((kw: any) => (
+            {kwList.filter(k => (k.positionChange ?? 0) < 0).slice(0, 10).length > 0
+              ? kwList.filter(k => (k.positionChange ?? 0) < 0).sort((a, b) => (a.positionChange ?? 0) - (b.positionChange ?? 0)).slice(0, 10).map((kw: any) => (
                 <div key={kw.id} className="flex items-center justify-between py-1.5 border-b border-gray-50 last:border-0">
                   <div className="min-w-0 flex-1 pr-2">
                     <p className="text-sm font-medium text-gray-900 truncate">{kw.keyword}</p>
@@ -174,67 +188,9 @@ export default function SeoPage() {
         </div>
       </div>
 
-      {/* Keywords table */}
-      <div className="bg-white rounded-2xl border border-gray-100 mb-6">
-        <div className="p-5 border-b border-gray-100 flex items-center justify-between">
-          <h3 className="font-semibold text-gray-900">Ranking słów kluczowych</h3>
-          {kwList.length > 0 && (
-            <span className="text-xs text-gray-400">{kwList.length} fraz</span>
-          )}
-        </div>
-        <div className="overflow-x-auto">
-          <table className="w-full text-sm">
-            <thead className="bg-gray-50 border-b border-gray-100">
-              <tr>
-                <th className="text-left py-3 px-5 text-xs font-semibold text-gray-500 uppercase tracking-wider">Fraza</th>
-                <th className="text-right py-3 px-4 text-xs font-semibold text-gray-500 uppercase tracking-wider">Pozycja</th>
-                <th className="text-right py-3 px-4 text-xs font-semibold text-gray-500 uppercase tracking-wider">Zmiana</th>
-                <th className="text-right py-3 px-4 text-xs font-semibold text-gray-500 uppercase tracking-wider">Wolumen</th>
-                {hasTraffic && (
-                  <th className="text-right py-3 px-4 text-xs font-semibold text-gray-500 uppercase tracking-wider">Ruch</th>
-                )}
-                {hasCpc && (
-                  <th className="text-right py-3 px-4 text-xs font-semibold text-gray-500 uppercase tracking-wider" title="Ekwiwalent Google Ads (CPC)">Ekw. Ads</th>
-                )}
-              </tr>
-            </thead>
-            <tbody className="divide-y divide-gray-50">
-              {kwList.length > 0
-                ? kwList.map((kw: any) => (
-                  <tr key={kw.id} className="hover:bg-gray-50 transition-colors">
-                    <td className="py-3 px-5 font-medium text-gray-900 max-w-xs truncate">
-                      {kw.url
-                        ? <a href={kw.url} target="_blank" rel="noopener noreferrer" className="hover:text-indigo-600 transition-colors">{kw.keyword}</a>
-                        : kw.keyword}
-                    </td>
-                    <td className="py-3 px-4 text-right text-gray-700 font-semibold">{kw.position ?? "—"}</td>
-                    <td className="py-3 px-4 text-right">
-                      <PositionBadge change={kw.positionChange} />
-                    </td>
-                    <td className="py-3 px-4 text-right text-gray-500">{formatNumber(kw.searchVolume)}</td>
-                    {hasTraffic && (
-                      <td className="py-3 px-4 text-right text-gray-500">{formatNumber(kw.estimatedTraffic)}</td>
-                    )}
-                    {hasCpc && (
-                      <td className="py-3 px-4 text-right text-gray-500 font-medium">{formatCpc(kw.cpc)}</td>
-                    )}
-                  </tr>
-                ))
-                : (
-                  <tr>
-                    <td colSpan={6} className="py-10 text-center text-gray-400">
-                      Brak danych — skonfiguruj Senuto i wykonaj synchronizację
-                    </td>
-                  </tr>
-                )}
-            </tbody>
-          </table>
-        </div>
-      </div>
-
       {/* Competitors */}
       {competitors.length > 0 && (
-        <div className="bg-white rounded-2xl border border-gray-100">
+        <div className="bg-white rounded-2xl border border-gray-100 mb-6">
           <div className="p-5 border-b border-gray-100 flex items-center gap-2">
             <Users className="w-4 h-4 text-gray-500" />
             <h3 className="font-semibold text-gray-900">Konkurencja w wynikach organicznych</h3>
@@ -247,6 +203,7 @@ export default function SeoPage() {
                   <th className="text-right py-3 px-4 text-xs font-semibold text-gray-500 uppercase tracking-wider">Wspólne frazy</th>
                   <th className="text-right py-3 px-4 text-xs font-semibold text-gray-500 uppercase tracking-wider">TOP 10</th>
                   <th className="text-right py-3 px-4 text-xs font-semibold text-gray-500 uppercase tracking-wider">TOP 50</th>
+                  <th className="text-right py-3 px-4 text-xs font-semibold text-gray-500 uppercase tracking-wider">Widoczność</th>
                 </tr>
               </thead>
               <tbody className="divide-y divide-gray-50">
@@ -257,9 +214,10 @@ export default function SeoPage() {
                         {c.domain}
                       </a>
                     </td>
-                    <td className="py-3 px-4 text-right text-gray-700 font-semibold">{formatNumber(c.commonKeywords)}</td>
+                    <td className="py-3 px-4 text-right font-semibold text-gray-700">{formatNumber(c.commonKeywords)}</td>
                     <td className="py-3 px-4 text-right text-gray-500">{formatNumber(c.keywordsTop10)}</td>
                     <td className="py-3 px-4 text-right text-gray-500">{formatNumber(c.keywordsTop50)}</td>
+                    <td className="py-3 px-4 text-right text-gray-500">{formatNumber(c.visibilityIndex ? Math.round(Number(c.visibilityIndex)) : null)}</td>
                   </tr>
                 ))}
               </tbody>
@@ -267,6 +225,47 @@ export default function SeoPage() {
           </div>
         </div>
       )}
+
+      {/* Keywords table - show if data available, otherwise info box */}
+      <div className="bg-white rounded-2xl border border-gray-100">
+        <div className="p-5 border-b border-gray-100 flex items-center justify-between">
+          <h3 className="font-semibold text-gray-900">Ranking słów kluczowych</h3>
+          {kwList.length > 0 && <span className="text-xs text-gray-400">{kwList.length} fraz</span>}
+        </div>
+        {kwList.length > 0 ? (
+          <div className="overflow-x-auto">
+            <table className="w-full text-sm">
+              <thead className="bg-gray-50 border-b border-gray-100">
+                <tr>
+                  <th className="text-left py-3 px-5 text-xs font-semibold text-gray-500 uppercase tracking-wider">Fraza</th>
+                  <th className="text-right py-3 px-4 text-xs font-semibold text-gray-500 uppercase tracking-wider">Pozycja</th>
+                  <th className="text-right py-3 px-4 text-xs font-semibold text-gray-500 uppercase tracking-wider">Zmiana</th>
+                  <th className="text-right py-3 px-4 text-xs font-semibold text-gray-500 uppercase tracking-wider">Wolumen</th>
+                </tr>
+              </thead>
+              <tbody className="divide-y divide-gray-50">
+                {kwList.map((kw: any) => (
+                  <tr key={kw.id} className="hover:bg-gray-50 transition-colors">
+                    <td className="py-3 px-5 font-medium text-gray-900 max-w-xs truncate">
+                      {kw.url
+                        ? <a href={kw.url} target="_blank" rel="noopener noreferrer" className="hover:text-indigo-600 transition-colors">{kw.keyword}</a>
+                        : kw.keyword}
+                    </td>
+                    <td className="py-3 px-4 text-right text-gray-700 font-semibold">{kw.position ?? "—"}</td>
+                    <td className="py-3 px-4 text-right"><PositionBadge change={kw.positionChange} /></td>
+                    <td className="py-3 px-4 text-right text-gray-500">{formatNumber(kw.searchVolume)}</td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        ) : (
+          <div className="p-8 text-center">
+            <p className="text-sm text-gray-500 mb-1">Dane pozycji fraz kluczowych nie są dostępne przez Senuto Visibility Analysis API.</p>
+            <p className="text-xs text-gray-400">Widoczność, konkurencja i ekwiwalent Google Ads pobierane są automatycznie co 24h.</p>
+          </div>
+        )}
+      </div>
     </div>
   );
 }

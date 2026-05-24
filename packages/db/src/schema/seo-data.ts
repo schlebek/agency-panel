@@ -13,6 +13,8 @@ export const senutoSnapshots = pgTable("senuto_snapshots", {
   top100: integer("top100"),
   totalKeywords: integer("total_keywords"),
   visibilityIndex: numeric("visibility_index", { precision: 10, scale: 4 }),
+  visibilityScore: numeric("visibility_score", { precision: 14, scale: 2 }),
+  adsEquivalent: numeric("ads_equivalent", { precision: 14, scale: 2 }),
   // Raw data z API
   rawData: jsonb("raw_data"),
   createdAt: timestamp("created_at").defaultNow().notNull(),

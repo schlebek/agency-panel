@@ -128,19 +128,23 @@ export class SenutoClient {
 
   async getCompetitors(domain: string, options?: {
     countryId?: number;
-  }): Promise<{ data: any[]; meta?: any }> {
-    const qs = new URLSearchParams({
+    page?: number;
+    limit?: number;
+  }): Promise<{ success: boolean; data: any[]; pagination?: any }> {
+    const url = `${SENUTO_BASE_URL}/visibility_analysis/reports/domain_competitors/getTopCompetitors`;
+    const body = {
       domain,
       fetch_mode: "topLevelDomain",
-      country_id: String(options?.countryId ?? 1),
-    });
+      country_id: options?.countryId ?? 1,
+      page: options?.page ?? 1,
+      limit: options?.limit ?? 50,
+    };
 
-    const url = `${SENUTO_BASE_URL}/visibility_analysis/reports/domain_competitors/getDomainCompetitors?${qs}`;
-    console.log("[senuto] GET competitors for:", domain);
+    console.log("[senuto] POST competitors for:", domain);
 
     try {
-      const { data } = await axios.get(url, { headers: this.headers });
-      console.log("[senuto] competitors response sample:", JSON.stringify(data).slice(0, 500));
+      const { data } = await axios.post(url, body, { headers: this.headers });
+      console.log("[senuto] competitors response sample:", JSON.stringify(data).slice(0, 300));
       return data;
     } catch (err: any) {
       console.error("[senuto] competitors error", err.response?.status, JSON.stringify(err.response?.data).slice(0, 300));
