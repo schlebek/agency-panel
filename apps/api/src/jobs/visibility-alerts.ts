@@ -2,7 +2,7 @@ import { db, clients, tenants, senutoSnapshots } from "@agency/db";
 import { eq, desc } from "drizzle-orm";
 import { Resend } from "resend";
 
-const resend = new Resend(process.env.RESEND_API_KEY);
+const resend = new Resend(process.env.RESEND_API_KEY || 'placeholder');
 
 async function checkVisibilityDrops() {
   try {

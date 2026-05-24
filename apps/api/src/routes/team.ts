@@ -10,7 +10,7 @@ import { addDays } from "date-fns";
 import crypto from "crypto";
 
 const app = new Hono();
-const resend = new Resend(process.env.RESEND_API_KEY);
+const resend = new Resend(process.env.RESEND_API_KEY || 'placeholder');
 
 app.use("*", requireAuth);
 

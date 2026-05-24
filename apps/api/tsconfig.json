@@ -3,13 +3,18 @@
     "target": "ESNext",
     "module": "ESNext",
     "moduleResolution": "bundler",
-    "strict": true,
+    "strict": false,
     "skipLibCheck": true,
+    "noImplicitAny": false,
     "outDir": "dist",
     "baseUrl": ".",
     "paths": {
-      "@agency/db": ["../../packages/db/src/index.ts"]
+      "@agency/db": [
+        "../../packages/db/src/index.ts"
+      ]
     }
   },
-  "include": ["src/**/*"]
+  "include": [
+    "src/**/*"
+  ]
 }

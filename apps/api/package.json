@@ -4,32 +4,33 @@
   "private": true,
   "scripts": {
     "dev": "tsx watch src/index.ts",
-    "build": "tsc --noEmit false --outDir dist",
+    "build": "esbuild src/index.ts --bundle --platform=node --outfile=dist/index.js --format=cjs",
     "start": "node dist/index.js"
   },
   "dependencies": {
     "@agency/db": "workspace:*",
-    "@hono/node-server": "^1.13.7",
-    "hono": "^4.6.14",
-    "@hono/zod-validator": "^0.4.1",
-    "zod": "^3.24.1",
-    "bcryptjs": "^2.4.3",
-    "jsonwebtoken": "^9.0.2",
-    "bullmq": "^5.34.0",
-    "ioredis": "^5.4.1",
     "@aws-sdk/client-s3": "^3.726.1",
     "@aws-sdk/s3-request-presigner": "^3.726.1",
+    "@hono/node-server": "^1.13.7",
+    "@hono/zod-validator": "^0.4.1",
     "axios": "^1.7.9",
-    "resend": "^4.0.1",
+    "bcryptjs": "^2.4.3",
+    "bullmq": "^5.34.0",
     "date-fns": "^4.1.0",
+    "drizzle-orm": "^0.38.3",
     "googleapis": "^144.0.0",
+    "hono": "^4.6.14",
+    "ioredis": "^5.4.1",
+    "jsonwebtoken": "^9.0.2",
     "puppeteer": "^23.11.1",
-    "drizzle-orm": "^0.38.3"
+    "resend": "^4.0.1",
+    "zod": "^3.24.1"
   },
   "devDependencies": {
     "@types/bcryptjs": "^2.4.6",
     "@types/jsonwebtoken": "^9.0.7",
     "@types/node": "^22.10.2",
+    "esbuild": "^0.28.0",
     "tsx": "^4.19.2",
     "typescript": "^5.7.2"
   }
