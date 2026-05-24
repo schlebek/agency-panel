@@ -65,7 +65,7 @@ export default function ClientsPage() {
         <div className="flex items-center gap-2">
           <input ref={fileInputRef} type="file" accept=".csv" className="hidden" onChange={handleCsvImport} />
           <button onClick={() => fileInputRef.current?.click()} disabled={importing}
-            title="Importuj klientów z CSV (wymagane kolumny: name, domain)"
+            title="Importuj klientów z CSV — wymagane kolumny: name, domain. Opcjonalne: contactEmail, industry, engine, clientType"
             className="flex items-center gap-2 px-3 py-2.5 border border-gray-200 text-gray-600 text-sm font-medium rounded-xl hover:bg-gray-50 transition-colors disabled:opacity-50">
             {importing ? <Upload className="w-4 h-4 animate-bounce" /> : <FileUp className="w-4 h-4" />}
             <span className="hidden sm:inline">{importing ? "Importuję..." : "Import CSV"}</span>
@@ -125,9 +125,13 @@ export default function ClientsPage() {
                   className="flex items-center gap-3 sm:gap-4 px-4 sm:px-5 py-4 hover:bg-gray-50 transition-colors group"
                 >
                   {/* Avatar */}
-                  <div className="w-10 h-10 bg-gradient-to-br from-indigo-400 to-purple-500 rounded-xl flex items-center justify-center text-white font-bold text-base flex-shrink-0">
-                    {client.name[0]?.toUpperCase()}
-                  </div>
+                  {client.logoUrl ? (
+                    <img src={client.logoUrl} alt={client.name} className="w-10 h-10 rounded-xl object-contain border border-gray-100 bg-gray-50 flex-shrink-0" />
+                  ) : (
+                    <div className="w-10 h-10 bg-gradient-to-br from-indigo-400 to-purple-500 rounded-xl flex items-center justify-center text-white font-bold text-base flex-shrink-0">
+                      {client.name[0]?.toUpperCase()}
+                    </div>
+                  )}
 
                   {/* Name + domain */}
                   <div className="flex-1 min-w-0">

@@ -5,7 +5,7 @@ import {
   Users, TrendingUp, Search, ArrowRight, Plus, FileText,
   ShoppingCart, Cpu, HeartPulse, Banknote, Building2, UtensilsCrossed,
   GraduationCap, Scale, Sparkles, Car, Plane, Dumbbell, Zap, Briefcase,
-  CheckSquare, BookOpen, AlertTriangle, WifiOff, CheckCircle2,
+  AlertTriangle, WifiOff, CheckCircle2,
 } from "lucide-react";
 import { api } from "@/lib/api";
 import { useAuthStore } from "@/lib/auth-store";
@@ -77,7 +77,8 @@ export default function DashboardPage() {
       {(() => {
         if (!clients) return null;
         const downClients = clients.filter((c: any) => c.uptimeStatus === "down" && c.uptimeEnabled);
-        const noIntegration = clients.filter((c: any) => !c.senutoProjectId && !c.gscPropertyUrl);
+        const sevenDaysAgo = new Date(Date.now() - 7 * 24 * 60 * 60 * 1000);
+        const noIntegration = clients.filter((c: any) => !c.senutoProjectId && !c.gscPropertyUrl && new Date(c.createdAt) < sevenDaysAgo);
         const items = [
           ...downClients.map((c: any) => ({ id: c.id, name: c.name, type: "down" as const, detail: "Strona niedostępna" })),
           ...noIntegration.slice(0, 3).map((c: any) => ({ id: c.id, name: c.name, type: "noIntegration" as const, detail: "Brak integracji SEO" })),
@@ -159,9 +160,13 @@ export default function DashboardPage() {
                   return (
                     <Link key={client.id} href={`/clients/${client.id}`}
                       className="flex items-center gap-3 px-5 sm:px-6 py-3.5 hover:bg-gray-50 transition-colors group">
-                      <div className="w-9 h-9 bg-gradient-to-br from-indigo-400 to-purple-500 rounded-xl flex items-center justify-center text-white font-bold text-sm flex-shrink-0">
-                        {client.name[0]?.toUpperCase()}
-                      </div>
+                      {client.logoUrl ? (
+                        <img src={client.logoUrl} alt={client.name} className="w-9 h-9 rounded-xl object-contain border border-gray-100 bg-gray-50 flex-shrink-0" />
+                      ) : (
+                        <div className="w-9 h-9 bg-gradient-to-br from-indigo-400 to-purple-500 rounded-xl flex items-center justify-center text-white font-bold text-sm flex-shrink-0">
+                          {client.name[0]?.toUpperCase()}
+                        </div>
+                      )}
                       <div className="flex-1 min-w-0">
                         <p className="font-medium text-gray-900 text-sm truncate">{client.name}</p>
                         <div className="flex items-center gap-1.5">
@@ -225,12 +230,12 @@ export default function DashboardPage() {
 
           {/* Quick links */}
           <div className="bg-white rounded-2xl border border-gray-100 p-5">
-            <h3 className="font-semibold text-gray-900 text-sm mb-3">Narzędzia</h3>
+            <h3 className="font-semibold text-gray-900 text-sm mb-3">Szybki dostęp</h3>
             <div className="space-y-1">
               {[
-                { href: "/clients", icon: CheckSquare, label: "Optymalizacje SEO" },
-                { href: "/clients", icon: BookOpen, label: "Briefe blogowe" },
                 { href: "/reports", icon: FileText, label: "Generuj raporty" },
+                { href: "/team", icon: Users, label: "Zarządzaj zespołem" },
+                { href: "/settings", icon: Zap, label: "Ustawienia agencji" },
               ].map(({ href, icon: Icon, label }) => (
                 <Link key={label} href={href}
                   className="flex items-center gap-3 px-3 py-2.5 rounded-xl text-sm text-gray-600 hover:bg-indigo-50 hover:text-indigo-700 transition-colors group">

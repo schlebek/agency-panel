@@ -521,9 +521,13 @@ export default function ClientPage() {
 
         <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
           <div className="flex items-center gap-4">
-            <div className="w-12 h-12 sm:w-14 sm:h-14 bg-gradient-to-br from-indigo-400 to-purple-500 rounded-2xl flex items-center justify-center text-white font-bold text-xl flex-shrink-0">
-              {client.name[0]?.toUpperCase()}
-            </div>
+            {client.logoUrl ? (
+              <img src={client.logoUrl} alt={client.name} className="w-12 h-12 sm:w-14 sm:h-14 rounded-2xl object-contain border border-gray-100 bg-gray-50 flex-shrink-0" />
+            ) : (
+              <div className="w-12 h-12 sm:w-14 sm:h-14 bg-gradient-to-br from-indigo-400 to-purple-500 rounded-2xl flex items-center justify-center text-white font-bold text-xl flex-shrink-0">
+                {client.name[0]?.toUpperCase()}
+              </div>
+            )}
             <div>
               <div className="flex flex-wrap items-center gap-2">
                 <h1 className="text-xl sm:text-2xl font-bold text-gray-900">{client.name}</h1>
