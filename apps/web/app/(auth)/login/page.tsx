@@ -1,9 +1,10 @@
 "use client";
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
 import { toast } from "sonner";
 import { useAuthStore } from "@/lib/auth-store";
+import { api } from "@/lib/api";
 
 export default function LoginPage() {
   const router = useRouter();
@@ -11,6 +12,12 @@ export default function LoginPage() {
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [loading, setLoading] = useState(false);
+
+  useEffect(() => {
+    api.get("/auth/setup-status").then(({ data }) => {
+      if (data.needed) router.replace("/setup");
+    }).catch(() => {});
+  }, [router]);
 
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
