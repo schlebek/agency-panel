@@ -3,12 +3,12 @@ import useSWR from "swr";
 import { useParams } from "next/navigation";
 import { useState } from "react";
 import { toast } from "sonner";
-import { RefreshCw, TrendingUp, TrendingDown, ArrowUp, ArrowDown, Minus } from "lucide-react";
+import { RefreshCw, TrendingUp, TrendingDown, ArrowUp, ArrowDown, Minus, Users } from "lucide-react";
 import {
   LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer
 } from "recharts";
 import { api } from "@/lib/api";
-import { formatNumber, getMonthName } from "@/lib/utils";
+import { formatNumber } from "@/lib/utils";
 
 const fetcher = (url: string) => api.get(url).then((r) => r.data);
 
@@ -26,6 +26,13 @@ function PositionBadge({ change }: { change: number | null | undefined }) {
   );
 }
 
+function formatCpc(cpc: string | number | null | undefined): string {
+  if (cpc == null) return "—";
+  const n = Number(cpc);
+  if (isNaN(n) || n === 0) return "—";
+  return `${n.toFixed(2)} zł`;
+}
+
 export default function SeoPage() {
   const { id } = useParams<{ id: string }>();
   const [syncing, setSyncing] = useState(false);
@@ -33,7 +40,8 @@ export default function SeoPage() {
   const { data: visibility } = useSWR(`/senuto/${id}/visibility`, fetcher);
   const { data: gainers } = useSWR(`/senuto/${id}/gainers`, fetcher);
   const { data: losers } = useSWR(`/senuto/${id}/losers`, fetcher);
-  const { data: keywords } = useSWR(`/senuto/${id}/keywords?limit=50`, fetcher);
+  const { data: keywords } = useSWR(`/senuto/${id}/keywords?limit=100`, fetcher);
+  const { data: competitorsData } = useSWR(`/senuto/${id}/competitors`, fetcher);
 
   async function handleSync() {
     setSyncing(true);
@@ -56,6 +64,11 @@ export default function SeoPage() {
 
   const latest = visibility?.snapshots?.[visibility.snapshots.length - 1];
   const prev = visibility?.snapshots?.[visibility.snapshots.length - 2];
+
+  const kwList: any[] = keywords?.keywords ?? [];
+  const hasCpc = kwList.some((k) => k.cpc != null && Number(k.cpc) > 0);
+  const hasTraffic = kwList.some((k) => k.estimatedTraffic != null);
+  const competitors: any[] = competitorsData?.competitors ?? [];
 
   return (
     <div className="p-8">
@@ -122,77 +135,138 @@ export default function SeoPage() {
       <div className="grid grid-cols-2 gap-5 mb-6">
         <div className="bg-white rounded-2xl border border-gray-100 p-5">
           <div className="flex items-center gap-2 mb-4">
-            <TrendingUp className="w-4.5 h-4.5 text-green-600" />
+            <TrendingUp className="w-4 h-4 text-green-600" />
             <h3 className="font-semibold text-gray-900">Największe wzrosty</h3>
           </div>
           <div className="space-y-2">
-            {gainers?.gainers?.slice(0, 10).map((kw: any) => (
-              <div key={kw.id} className="flex items-center justify-between py-1.5 border-b border-gray-50 last:border-0">
-                <div>
-                  <p className="text-sm font-medium text-gray-900">{kw.keyword}</p>
-                  <p className="text-xs text-gray-400">Pozycja: {kw.position}</p>
+            {gainers?.gainers?.length > 0
+              ? gainers.gainers.slice(0, 10).map((kw: any) => (
+                <div key={kw.id} className="flex items-center justify-between py-1.5 border-b border-gray-50 last:border-0">
+                  <div className="min-w-0 flex-1 pr-2">
+                    <p className="text-sm font-medium text-gray-900 truncate">{kw.keyword}</p>
+                    <p className="text-xs text-gray-400">Poz. {kw.position}{kw.searchVolume ? ` · ${formatNumber(kw.searchVolume)}/mies.` : ""}</p>
+                  </div>
+                  <PositionBadge change={kw.positionChange} />
                 </div>
-                <PositionBadge change={kw.positionChange} />
-              </div>
-            )) ?? <p className="text-sm text-gray-400">Brak danych</p>}
+              ))
+              : <p className="text-sm text-gray-400 py-4 text-center">Brak danych</p>}
           </div>
         </div>
 
         <div className="bg-white rounded-2xl border border-gray-100 p-5">
           <div className="flex items-center gap-2 mb-4">
-            <TrendingDown className="w-4.5 h-4.5 text-red-500" />
+            <TrendingDown className="w-4 h-4 text-red-500" />
             <h3 className="font-semibold text-gray-900">Największe spadki</h3>
           </div>
           <div className="space-y-2">
-            {losers?.losers?.slice(0, 10).map((kw: any) => (
-              <div key={kw.id} className="flex items-center justify-between py-1.5 border-b border-gray-50 last:border-0">
-                <div>
-                  <p className="text-sm font-medium text-gray-900">{kw.keyword}</p>
-                  <p className="text-xs text-gray-400">Pozycja: {kw.position}</p>
+            {losers?.losers?.length > 0
+              ? losers.losers.slice(0, 10).map((kw: any) => (
+                <div key={kw.id} className="flex items-center justify-between py-1.5 border-b border-gray-50 last:border-0">
+                  <div className="min-w-0 flex-1 pr-2">
+                    <p className="text-sm font-medium text-gray-900 truncate">{kw.keyword}</p>
+                    <p className="text-xs text-gray-400">Poz. {kw.position}{kw.searchVolume ? ` · ${formatNumber(kw.searchVolume)}/mies.` : ""}</p>
+                  </div>
+                  <PositionBadge change={kw.positionChange} />
                 </div>
-                <PositionBadge change={kw.positionChange} />
-              </div>
-            )) ?? <p className="text-sm text-gray-400">Brak danych</p>}
+              ))
+              : <p className="text-sm text-gray-400 py-4 text-center">Brak danych</p>}
           </div>
         </div>
       </div>
 
       {/* Keywords table */}
-      <div className="bg-white rounded-2xl border border-gray-100">
-        <div className="p-5 border-b border-gray-100">
+      <div className="bg-white rounded-2xl border border-gray-100 mb-6">
+        <div className="p-5 border-b border-gray-100 flex items-center justify-between">
           <h3 className="font-semibold text-gray-900">Ranking słów kluczowych</h3>
+          {kwList.length > 0 && (
+            <span className="text-xs text-gray-400">{kwList.length} fraz</span>
+          )}
         </div>
         <div className="overflow-x-auto">
           <table className="w-full text-sm">
             <thead className="bg-gray-50 border-b border-gray-100">
               <tr>
                 <th className="text-left py-3 px-5 text-xs font-semibold text-gray-500 uppercase tracking-wider">Fraza</th>
-                <th className="text-right py-3 px-5 text-xs font-semibold text-gray-500 uppercase tracking-wider">Pozycja</th>
-                <th className="text-right py-3 px-5 text-xs font-semibold text-gray-500 uppercase tracking-wider">Zmiana</th>
-                <th className="text-right py-3 px-5 text-xs font-semibold text-gray-500 uppercase tracking-wider">Wolumen</th>
+                <th className="text-right py-3 px-4 text-xs font-semibold text-gray-500 uppercase tracking-wider">Pozycja</th>
+                <th className="text-right py-3 px-4 text-xs font-semibold text-gray-500 uppercase tracking-wider">Zmiana</th>
+                <th className="text-right py-3 px-4 text-xs font-semibold text-gray-500 uppercase tracking-wider">Wolumen</th>
+                {hasTraffic && (
+                  <th className="text-right py-3 px-4 text-xs font-semibold text-gray-500 uppercase tracking-wider">Ruch</th>
+                )}
+                {hasCpc && (
+                  <th className="text-right py-3 px-4 text-xs font-semibold text-gray-500 uppercase tracking-wider" title="Ekwiwalent Google Ads (CPC)">Ekw. Ads</th>
+                )}
               </tr>
             </thead>
             <tbody className="divide-y divide-gray-50">
-              {keywords?.keywords?.map((kw: any) => (
-                <tr key={kw.id} className="hover:bg-gray-50 transition-colors">
-                  <td className="py-3 px-5 font-medium text-gray-900">{kw.keyword}</td>
-                  <td className="py-3 px-5 text-right text-gray-700 font-semibold">{kw.position}</td>
-                  <td className="py-3 px-5 text-right">
-                    <PositionBadge change={kw.positionChange} />
-                  </td>
-                  <td className="py-3 px-5 text-right text-gray-500">{formatNumber(kw.searchVolume)}</td>
-                </tr>
-              )) ?? (
-                <tr>
-                  <td colSpan={4} className="py-8 text-center text-gray-400">
-                    Brak danych — skonfiguruj Senuto i wykonaj synchronizację
-                  </td>
-                </tr>
-              )}
+              {kwList.length > 0
+                ? kwList.map((kw: any) => (
+                  <tr key={kw.id} className="hover:bg-gray-50 transition-colors">
+                    <td className="py-3 px-5 font-medium text-gray-900 max-w-xs truncate">
+                      {kw.url
+                        ? <a href={kw.url} target="_blank" rel="noopener noreferrer" className="hover:text-indigo-600 transition-colors">{kw.keyword}</a>
+                        : kw.keyword}
+                    </td>
+                    <td className="py-3 px-4 text-right text-gray-700 font-semibold">{kw.position ?? "—"}</td>
+                    <td className="py-3 px-4 text-right">
+                      <PositionBadge change={kw.positionChange} />
+                    </td>
+                    <td className="py-3 px-4 text-right text-gray-500">{formatNumber(kw.searchVolume)}</td>
+                    {hasTraffic && (
+                      <td className="py-3 px-4 text-right text-gray-500">{formatNumber(kw.estimatedTraffic)}</td>
+                    )}
+                    {hasCpc && (
+                      <td className="py-3 px-4 text-right text-gray-500 font-medium">{formatCpc(kw.cpc)}</td>
+                    )}
+                  </tr>
+                ))
+                : (
+                  <tr>
+                    <td colSpan={6} className="py-10 text-center text-gray-400">
+                      Brak danych — skonfiguruj Senuto i wykonaj synchronizację
+                    </td>
+                  </tr>
+                )}
             </tbody>
           </table>
         </div>
       </div>
+
+      {/* Competitors */}
+      {competitors.length > 0 && (
+        <div className="bg-white rounded-2xl border border-gray-100">
+          <div className="p-5 border-b border-gray-100 flex items-center gap-2">
+            <Users className="w-4 h-4 text-gray-500" />
+            <h3 className="font-semibold text-gray-900">Konkurencja w wynikach organicznych</h3>
+          </div>
+          <div className="overflow-x-auto">
+            <table className="w-full text-sm">
+              <thead className="bg-gray-50 border-b border-gray-100">
+                <tr>
+                  <th className="text-left py-3 px-5 text-xs font-semibold text-gray-500 uppercase tracking-wider">Domena</th>
+                  <th className="text-right py-3 px-4 text-xs font-semibold text-gray-500 uppercase tracking-wider">Wspólne frazy</th>
+                  <th className="text-right py-3 px-4 text-xs font-semibold text-gray-500 uppercase tracking-wider">TOP 10</th>
+                  <th className="text-right py-3 px-4 text-xs font-semibold text-gray-500 uppercase tracking-wider">TOP 50</th>
+                </tr>
+              </thead>
+              <tbody className="divide-y divide-gray-50">
+                {competitors.map((c: any) => (
+                  <tr key={c.id} className="hover:bg-gray-50 transition-colors">
+                    <td className="py-3 px-5 font-medium text-gray-900">
+                      <a href={`https://${c.domain}`} target="_blank" rel="noopener noreferrer" className="hover:text-indigo-600 transition-colors">
+                        {c.domain}
+                      </a>
+                    </td>
+                    <td className="py-3 px-4 text-right text-gray-700 font-semibold">{formatNumber(c.commonKeywords)}</td>
+                    <td className="py-3 px-4 text-right text-gray-500">{formatNumber(c.keywordsTop10)}</td>
+                    <td className="py-3 px-4 text-right text-gray-500">{formatNumber(c.keywordsTop50)}</td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        </div>
+      )}
     </div>
   );
 }

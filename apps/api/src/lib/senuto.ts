@@ -95,6 +95,54 @@ export class SenutoClient {
       throw err;
     }
   }
+
+  async getKeywords(domain: string, options?: {
+    countryId?: number;
+    limit?: number;
+    page?: number;
+  }): Promise<{ data: any[]; meta?: any }> {
+    const qs = new URLSearchParams({
+      domain,
+      country_id: String(options?.countryId ?? 1),
+      limit: String(options?.limit ?? 100),
+      page: String(options?.page ?? 1),
+    });
+
+    const url = `${SENUTO_BASE_URL}/visibility_analysis/domain_keywords?${qs}`;
+    console.log("[senuto] GET keywords for:", domain, `page=${options?.page ?? 1}`);
+
+    try {
+      const { data } = await axios.get(url, { headers: this.headers });
+      if (options?.page === 1) {
+        console.log("[senuto] keywords response sample:", JSON.stringify(data).slice(0, 400));
+      }
+      return data;
+    } catch (err: any) {
+      console.error("[senuto] keywords error", err.response?.status, JSON.stringify(err.response?.data).slice(0, 300));
+      throw err;
+    }
+  }
+
+  async getCompetitors(domain: string, options?: {
+    countryId?: number;
+  }): Promise<{ data: any[]; meta?: any }> {
+    const qs = new URLSearchParams({
+      domain,
+      country_id: String(options?.countryId ?? 1),
+    });
+
+    const url = `${SENUTO_BASE_URL}/visibility_analysis/domain_competitors?${qs}`;
+    console.log("[senuto] GET competitors for:", domain);
+
+    try {
+      const { data } = await axios.get(url, { headers: this.headers });
+      console.log("[senuto] competitors response sample:", JSON.stringify(data).slice(0, 400));
+      return data;
+    } catch (err: any) {
+      console.error("[senuto] competitors error", err.response?.status, JSON.stringify(err.response?.data).slice(0, 300));
+      throw err;
+    }
+  }
 }
 
 export function getSenutoClient(tenantApiKey?: string | null): SenutoClient {

@@ -30,10 +30,28 @@ export const senutoKeywords = pgTable("senuto_keywords", {
   previousPosition: integer("previous_position"),
   positionChange: integer("position_change"),
   searchVolume: integer("search_volume"),
+  cpc: numeric("cpc", { precision: 10, scale: 4 }),
+  estimatedTraffic: integer("estimated_traffic"),
   url: text("url"),
   createdAt: timestamp("created_at").defaultNow().notNull(),
 }, (t) => [
   index("senuto_keywords_client_date_idx").on(t.clientId, t.snapshotDate),
+]);
+
+// Competitor domains from Senuto
+export const senutoCompetitors = pgTable("senuto_competitors", {
+  id: uuid("id").primaryKey().defaultRandom(),
+  clientId: uuid("client_id").references(() => clients.id, { onDelete: "cascade" }).notNull(),
+  snapshotDate: timestamp("snapshot_date").notNull(),
+  domain: text("domain").notNull(),
+  commonKeywords: integer("common_keywords"),
+  keywordsTop3: integer("keywords_top3"),
+  keywordsTop10: integer("keywords_top10"),
+  keywordsTop50: integer("keywords_top50"),
+  visibilityIndex: numeric("visibility_index", { precision: 10, scale: 4 }),
+  createdAt: timestamp("created_at").defaultNow().notNull(),
+}, (t) => [
+  index("senuto_competitors_client_date_idx").on(t.clientId, t.snapshotDate),
 ]);
 
 // Cache danych z GSC (odświeżane co 24h)
@@ -78,4 +96,5 @@ export const gscTopQueries = pgTable("gsc_top_queries", {
 
 export type SenutoSnapshot = typeof senutoSnapshots.$inferSelect;
 export type SenutoKeyword = typeof senutoKeywords.$inferSelect;
+export type SenutoCompetitor = typeof senutoCompetitors.$inferSelect;
 export type GscSnapshot = typeof gscSnapshots.$inferSelect;

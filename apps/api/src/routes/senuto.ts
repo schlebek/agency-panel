@@ -1,5 +1,5 @@
 import { Hono } from "hono";
-import { db, clients, tenants, senutoSnapshots, senutoKeywords } from "@agency/db";
+import { db, clients, tenants, senutoSnapshots, senutoKeywords, senutoCompetitors } from "@agency/db";
 import { eq, and, desc, asc } from "drizzle-orm";
 import { requireAuth } from "../middleware/auth";
 import { getSenutoClient } from "../lib/senuto";
@@ -155,6 +155,29 @@ app.get("/:clientId/losers", async (c) => {
     .limit(20);
 
   return c.json({ losers: losers.filter(k => (k.positionChange ?? 0) < 0) });
+});
+
+// Konkurencja
+app.get("/:clientId/competitors", async (c) => {
+  const tenant = c.get("tenant");
+  const { clientId } = c.req.param();
+
+  const [client] = await db
+    .select()
+    .from(clients)
+    .where(and(eq(clients.id, clientId), eq(clients.tenantId, tenant.id)))
+    .limit(1);
+
+  if (!client) return c.json({ error: "Client not found" }, 404);
+
+  const competitors = await db
+    .select()
+    .from(senutoCompetitors)
+    .where(eq(senutoCompetitors.clientId, clientId))
+    .orderBy(desc(senutoCompetitors.commonKeywords))
+    .limit(20);
+
+  return c.json({ competitors });
 });
 
 // Ręczna synchronizacja
