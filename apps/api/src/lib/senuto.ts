@@ -101,20 +101,23 @@ export class SenutoClient {
     limit?: number;
     page?: number;
   }): Promise<{ data: any[]; meta?: any }> {
+    const today = new Date().toISOString().split("T")[0];
     const qs = new URLSearchParams({
       domain,
+      fetch_mode: "topLevelDomain",
       country_id: String(options?.countryId ?? 1),
+      date: today,
       limit: String(options?.limit ?? 100),
       page: String(options?.page ?? 1),
     });
 
-    const url = `${SENUTO_BASE_URL}/visibility_analysis/domain_keywords?${qs}`;
+    const url = `${SENUTO_BASE_URL}/visibility_analysis/reports/domain_positions/getDomainPositions?${qs}`;
     console.log("[senuto] GET keywords for:", domain, `page=${options?.page ?? 1}`);
 
     try {
       const { data } = await axios.get(url, { headers: this.headers });
       if (options?.page === 1) {
-        console.log("[senuto] keywords response sample:", JSON.stringify(data).slice(0, 400));
+        console.log("[senuto] keywords response sample:", JSON.stringify(data).slice(0, 500));
       }
       return data;
     } catch (err: any) {
@@ -128,15 +131,16 @@ export class SenutoClient {
   }): Promise<{ data: any[]; meta?: any }> {
     const qs = new URLSearchParams({
       domain,
+      fetch_mode: "topLevelDomain",
       country_id: String(options?.countryId ?? 1),
     });
 
-    const url = `${SENUTO_BASE_URL}/visibility_analysis/domain_competitors?${qs}`;
+    const url = `${SENUTO_BASE_URL}/visibility_analysis/reports/domain_competitors/getDomainCompetitors?${qs}`;
     console.log("[senuto] GET competitors for:", domain);
 
     try {
       const { data } = await axios.get(url, { headers: this.headers });
-      console.log("[senuto] competitors response sample:", JSON.stringify(data).slice(0, 400));
+      console.log("[senuto] competitors response sample:", JSON.stringify(data).slice(0, 500));
       return data;
     } catch (err: any) {
       console.error("[senuto] competitors error", err.response?.status, JSON.stringify(err.response?.data).slice(0, 300));
