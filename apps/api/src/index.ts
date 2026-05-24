@@ -42,7 +42,7 @@ app.use("*", secureHeaders());
 app.use("*", cors({
   origin: process.env.FRONTEND_URL ?? "http://localhost:3000",
   credentials: true,
-  allowHeaders: ["Authorization", "Content-Type", "x-session-token"],
+  allowHeaders: ["Authorization", "Content-Type", "x-session-token", "x-client-token"],
 }));
 app.use("*", logger());
 

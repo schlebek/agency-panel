@@ -24,7 +24,12 @@ export async function uploadFile(key: string, body: Buffer | Uint8Array, content
 }
 
 export async function getPresignedUrl(key: string, expiresIn = 3600): Promise<string> {
-  return getSignedUrl(s3, new GetObjectCommand({ Bucket: BUCKET, Key: key }), { expiresIn });
+  const url = await getSignedUrl(s3, new GetObjectCommand({ Bucket: BUCKET, Key: key }), { expiresIn });
+  if (process.env.MINIO_PUBLIC_URL) {
+    const internal = `http://${process.env.MINIO_ENDPOINT}:${process.env.MINIO_PORT}`;
+    return url.replace(internal, process.env.MINIO_PUBLIC_URL);
+  }
+  return url;
 }
 
 export async function deleteFile(key: string): Promise<void> {

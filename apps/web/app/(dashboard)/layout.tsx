@@ -116,7 +116,7 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
 
   useEffect(() => {
     if (!token) { router.push("/login"); return; }
-    if (!user) fetchMe().catch(() => router.push("/login"));
+    if (!user) fetchMe().catch((err) => { if (err?.response?.status === 401) router.push("/login"); });
   }, [token]);
 
   // Dynamiczna favicon i kolor marki po zalogowaniu

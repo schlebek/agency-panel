@@ -12,7 +12,7 @@ export default function PortalLayout({ children }: { children: React.ReactNode }
     if (pathname === "/portal/login") return;
     if (!token) { router.push("/portal/login"); return; }
     if (!account) {
-      fetchMe().catch(() => router.push("/portal/login"));
+      fetchMe().catch((err) => { if (err?.response?.status === 401) router.push("/portal/login"); });
     }
   }, [token, pathname]);
 
