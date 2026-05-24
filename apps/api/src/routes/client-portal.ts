@@ -1,11 +1,23 @@
 import { Hono } from "hono";
 import { zValidator } from "@hono/zod-validator";
 import { z } from "zod";
-import { db, clientAccounts, clientSessions, clients, clientComments } from "@agency/db";
+import { db, clientAccounts, clientSessions, clients, clientComments, tenants } from "@agency/db";
 import { eq, and, desc } from "drizzle-orm";
 import { hashPassword, verifyPassword } from "../lib/auth";
+import { getPresignedUrl } from "../lib/storage";
 import jwt from "jsonwebtoken";
 import { addDays } from "date-fns";
+
+async function getTenantBranding(tenantId: string) {
+  const [t] = await db.select({
+    name: tenants.name,
+    logoKey: tenants.logoKey,
+    brandColor: tenants.brandColor,
+  }).from(tenants).where(eq(tenants.id, tenantId)).limit(1);
+  if (!t) return null;
+  const logoUrl = t.logoKey ? await getPresignedUrl(t.logoKey, 86400) : null;
+  return { name: t.name, logoUrl, brandColor: t.brandColor ?? "#4F46E5" };
+}
 
 const app = new Hono();
 const JWT_SECRET = process.env.BETTER_AUTH_SECRET!;
@@ -74,20 +86,24 @@ app.post("/login", zValidator("json", z.object({
   await db.update(clientAccounts).set({ lastLoginAt: new Date() }).where(eq(clientAccounts.id, account.id));
 
   const [client] = await db.select().from(clients).where(eq(clients.id, account.clientId)).limit(1);
+  const agency = await getTenantBranding(account.tenantId);
 
   return c.json({
     token,
     account: { id: account.id, email: account.email, name: account.name, clientId: account.clientId, tenantId: account.tenantId },
     client: client ? { id: client.id, name: client.name, domain: client.domain, logoUrl: client.logoUrl, tabVisibility: client.tabVisibility } : null,
+    agency,
   });
 });
 
 app.get("/me", requireClientAuth, async (c) => {
   const account = c.get("clientAccount");
   const [client] = await db.select().from(clients).where(eq(clients.id, account.clientId)).limit(1);
+  const agency = await getTenantBranding(account.tenantId);
   return c.json({
     account: { id: account.id, email: account.email, name: account.name, clientId: account.clientId, tenantId: account.tenantId },
     client: client ? { id: client.id, name: client.name, domain: client.domain, logoUrl: client.logoUrl, tabVisibility: client.tabVisibility } : null,
+    agency,
   });
 });
 

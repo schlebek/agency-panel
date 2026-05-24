@@ -9,7 +9,7 @@ import {
   Banknote, Building2, UtensilsCrossed, GraduationCap, Scale, Sparkles,
   Car, Plane, Dumbbell, Zap, UserPlus, Trash2, Eye, EyeOff, RefreshCw,
   ExternalLink, Users, KeyRound, ToggleLeft, ToggleRight, BrainCircuit,
-  Activity, ClipboardList, Target, BarChart2, MessageCircle, Send,
+  Activity, ClipboardList, Target, BarChart2, MessageCircle, Send, Copy,
 } from "lucide-react";
 import { toast } from "sonner";
 import { api } from "@/lib/api";
@@ -411,9 +411,37 @@ function ClientAccountsPanel({ clientId }: { clientId: string }) {
         </div>
       )}
 
-      <div className="mt-3 flex items-center gap-2 text-xs text-gray-400">
-        <ExternalLink className="w-3 h-3" />
-        <span>Link do portalu: <span className="font-medium text-gray-600">/portal/login</span></span>
+      <div className="mt-3 pt-3 border-t border-gray-100">
+        <p className="text-xs text-gray-400 mb-1.5">Link do portalu dla klienta</p>
+        <div className="flex items-center gap-2 bg-gray-50 rounded-xl px-3 py-2">
+          <a
+            href="/portal/login"
+            target="_blank"
+            rel="noopener noreferrer"
+            className="flex-1 text-xs text-indigo-600 font-medium truncate hover:text-indigo-800 transition-colors"
+          >
+            {typeof window !== "undefined" ? window.location.origin : ""}/portal/login
+          </a>
+          <button
+            onClick={() => {
+              const url = `${window.location.origin}/portal/login`;
+              navigator.clipboard.writeText(url);
+              toast.success("Skopiowano link!");
+            }}
+            className="flex-shrink-0 p-1 text-gray-400 hover:text-indigo-600 hover:bg-indigo-50 rounded-lg transition-colors"
+            title="Kopiuj link"
+          >
+            <Copy className="w-3.5 h-3.5" />
+          </button>
+          <a
+            href="/portal/login"
+            target="_blank"
+            rel="noopener noreferrer"
+            className="flex-shrink-0 p-1 text-gray-400 hover:text-indigo-600 hover:bg-indigo-50 rounded-lg transition-colors"
+          >
+            <ExternalLink className="w-3.5 h-3.5" />
+          </a>
+        </div>
       </div>
 
       {showAdd && (

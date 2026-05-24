@@ -204,7 +204,7 @@ function CustomTooltip({ active, payload, label }: any) {
 
 export default function PortalDashboard() {
   const router = useRouter();
-  const { account, client, logout } = usePortalStore();
+  const { account, client, agency, logout } = usePortalStore();
 
   const currentMonth = new Date().toISOString().substring(0, 7);
   const [selectedMonth, setSelectedMonth] = useState(currentMonth);
@@ -264,11 +264,15 @@ export default function PortalDashboard() {
       <header className="bg-white border-b border-gray-100 sticky top-0 z-30">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 h-14 flex items-center justify-between">
           <div className="flex items-center gap-3">
-            <div className="w-8 h-8 bg-indigo-600 rounded-lg flex items-center justify-center">
-              <TrendingUp className="w-4 h-4 text-white" />
-            </div>
+            {agency?.logoUrl ? (
+              <img src={agency.logoUrl} alt={agency.name} className="h-8 w-auto max-w-[120px] object-contain" />
+            ) : (
+              <div className="w-8 h-8 rounded-lg flex items-center justify-center" style={{ backgroundColor: agency?.brandColor ?? "#4F46E5" }}>
+                <TrendingUp className="w-4 h-4 text-white" />
+              </div>
+            )}
             <div className="hidden sm:block">
-              <p className="text-sm font-semibold text-gray-900">{client.name}</p>
+              <p className="text-sm font-semibold text-gray-900">{agency?.name ?? client.name}</p>
               <p className="text-xs text-gray-400">{client.domain}</p>
             </div>
           </div>
